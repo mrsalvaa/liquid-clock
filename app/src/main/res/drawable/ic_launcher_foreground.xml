@@ -1,31 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Disco de cristal -->
+    <!-- Esfera de cristal -->
     <path
-        android:fillColor="#33FFFFFF"
-        android:strokeWidth="1.5"
-        android:strokeColor="#B3FFFFFF"
-        android:pathData="M54,54m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0" />
-    <!-- Brillo especular -->
+        android:fillColor="#24FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeColor="#99FFFFFF"
+        android:pathData="M54,54m-27,0a27,27 0,1 1,54 0a27,27 0,1 1,-54 0" />
+    <!-- Brillo especular superior -->
+    <path android:pathData="M54,29.5a24.5,24.5 0,0 1,23.6 18a30,26 0,0 0,-47.2 0a24.5,24.5 0,0 1,23.6 -18z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54"
+                android:startY="29"
+                android:endX="54"
+                android:endY="48"
+                android:startColor="#55FFFFFF"
+                android:endColor="#00FFFFFF" />
+        </aapt:attr>
+    </path>
+    <!-- Marcas de 12, 3, 6 y 9 -->
     <path
-        android:fillColor="#40FFFFFF"
-        android:pathData="M34,44 A22,22 0 0 1 64,31 A26,26 0 0 0 34,44 Z" />
-    <!-- Agujas -->
+        android:strokeWidth="2"
+        android:strokeColor="#D9FFFFFF"
+        android:strokeLineCap="round"
+        android:pathData="M54,31.5v3.5M76.5,54h-3.5M54,76.5v-3.5M31.5,54h3.5" />
+    <!-- Horario (10) y minutero (2) -->
     <path
-        android:strokeWidth="4"
+        android:strokeWidth="3.6"
         android:strokeColor="#FFFFFFFF"
         android:strokeLineCap="round"
-        android:pathData="M54,54 L54,38" />
+        android:pathData="M54,54L43.6,48" />
     <path
-        android:strokeWidth="4"
+        android:strokeWidth="2.8"
         android:strokeColor="#FFFFFFFF"
         android:strokeLineCap="round"
-        android:pathData="M54,54 L65,61" />
+        android:pathData="M54,54L69.6,45" />
+    <!-- Segundero -->
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M54,54m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+        android:strokeWidth="1.2"
+        android:strokeColor="#FFF472B6"
+        android:strokeLineCap="round"
+        android:pathData="M56.5,49.7L44,71.3" />
+    <path
+        android:fillColor="#FF7CC8FF"
+        android:pathData="M54,54m-2.4,0a2.4,2.4 0,1 1,4.8 0a2.4,2.4 0,1 1,-4.8 0" />
 </vector>

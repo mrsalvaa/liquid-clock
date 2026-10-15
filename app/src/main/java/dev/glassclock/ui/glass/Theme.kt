@@ -80,14 +80,59 @@ val LightGlass = GlassPalette(
     blobs = listOf(Color(0xFFA5DCFB), Color(0xFFFBC4DE), Color(0xFF7CC8EE), Color(0xFFF5A3C7)),
 )
 
+/** Set de colores del fondo; cada uno trae su color de acento. */
+data class ColorSet(
+    val name: String,
+    val darkBlobs: List<Color>,
+    val lightBlobs: List<Color>,
+    val darkAccent: Color,
+    val lightAccent: Color,
+)
+
+val COLOR_SETS = listOf(
+    ColorSet(
+        "Celeste y rosa",
+        darkBlobs = listOf(Color(0xFF38BDF8), Color(0xFFF472B6), Color(0xFF0E7490), Color(0xFF9D174D)),
+        lightBlobs = listOf(Color(0xFFA5DCFB), Color(0xFFFBC4DE), Color(0xFF7CC8EE), Color(0xFFF5A3C7)),
+        darkAccent = Color(0xFF7CC8FF),
+        lightAccent = Color(0xFF1C7ED6),
+    ),
+    ColorSet(
+        "Aurora",
+        darkBlobs = listOf(Color(0xFF34D399), Color(0xFF8B5CF6), Color(0xFF0F766E), Color(0xFF5B21B6)),
+        lightBlobs = listOf(Color(0xFFA7F3D0), Color(0xFFDDD6FE), Color(0xFF99F6E4), Color(0xFFC4B5FD)),
+        darkAccent = Color(0xFF6EE7B7),
+        lightAccent = Color(0xFF0D9488),
+    ),
+    ColorSet(
+        "Atardecer",
+        darkBlobs = listOf(Color(0xFFFB923C), Color(0xFFE879F9), Color(0xFF9A3412), Color(0xFF86198F)),
+        lightBlobs = listOf(Color(0xFFFED7AA), Color(0xFFF5D0FE), Color(0xFFFDBA74), Color(0xFFF0ABFC)),
+        darkAccent = Color(0xFFFDBA74),
+        lightAccent = Color(0xFFC2410C),
+    ),
+    ColorSet(
+        "Océano",
+        darkBlobs = listOf(Color(0xFF3B82F6), Color(0xFF2DD4BF), Color(0xFF1E3A8A), Color(0xFF115E59)),
+        lightBlobs = listOf(Color(0xFFBFDBFE), Color(0xFF99F6E4), Color(0xFF93C5FD), Color(0xFF5EEAD4)),
+        darkAccent = Color(0xFF93C5FD),
+        lightAccent = Color(0xFF1D4ED8),
+    ),
+)
+
 val LocalGlass = staticCompositionLocalOf { DarkGlass }
 /** Lo que refractan las superficies de cristal: el fondo, o el fondo más el contenido. */
 val LocalBackdrop = staticCompositionLocalOf<Backdrop> { error("Falta GlassRoot") }
 
 @Composable
-fun GlassTheme(content: @Composable () -> Unit) {
+fun GlassTheme(colorSet: Int = 0, content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
-    val p = if (dark) DarkGlass else LightGlass
+    val set = COLOR_SETS.getOrElse(colorSet) { COLOR_SETS[0] }
+    val p = if (dark) {
+        DarkGlass.copy(blobs = set.darkBlobs, accent = set.darkAccent)
+    } else {
+        LightGlass.copy(blobs = set.lightBlobs, accent = set.lightAccent)
+    }
     val scheme = if (dark) {
         darkColorScheme(
             primary = p.accent, onPrimary = p.onAccent,
@@ -145,10 +190,16 @@ fun LiquidBackground(modifier: Modifier = Modifier, animated: Boolean = true) {
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = (2 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(60_000, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(90_000, easing = LinearEasing)),
         label = "phase",
     )
-    val alpha = if (p.dark) 0.34f else 0.6f
+    // En movimiento las manchas pasan por el centro y se notan más: van más tenues.
+    val alpha = when {
+        p.dark && animated -> 0.2f
+        p.dark -> 0.34f
+        animated -> 0.42f
+        else -> 0.6f
+    }
     Canvas(modifier) {
         drawRect(p.base)
         val w = size.width

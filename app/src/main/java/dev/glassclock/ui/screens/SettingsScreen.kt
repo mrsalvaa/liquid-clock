@@ -4,7 +4,19 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import dev.glassclock.ui.glass.COLOR_SETS
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,12 +38,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.glassclock.R
 import dev.glassclock.bedtime.Bedtime
 import dev.glassclock.data.AppSettings
 import dev.glassclock.data.Stores
@@ -136,6 +150,45 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
 
         SectionLabel("Apariencia")
         GlassCard {
+            Text("Colores del fondo", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                COLOR_SETS.forEachIndexed { i, set ->
+                    val selected = s.colorSet == i
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .clickable(remember { MutableInteractionSource() }, null) {
+                                edit { it.copy(colorSet = i) }
+                            },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        val blobs = if (p.dark) set.darkBlobs else set.lightBlobs
+                        Box(
+                            Modifier
+                                .size(52.dp)
+                                .border(
+                                    2.dp,
+                                    if (selected) p.content else Color.Transparent,
+                                    CircleShape,
+                                )
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(listOf(blobs[0], blobs[1]))),
+                        )
+                        Text(
+                            set.name,
+                            Modifier.padding(top = 6.dp),
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            color = if (selected) p.content else p.contentSecondary,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
             SettingRow("Fondo animado", subtitle = "Desactívalo para ahorrar batería") {
                 GlassSwitch(s.animatedBackground, { v -> edit { it.copy(animatedBackground = v) } })
             }
@@ -179,7 +232,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
 
         SectionLabel("Acerca de")
         GlassCard {
-            Text("Glass Clock", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.app_name), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 "Software libre bajo licencia GPL-3.0. Sin anuncios, sin rastreo y sin conexión a internet.",
                 fontSize = 13.sp,

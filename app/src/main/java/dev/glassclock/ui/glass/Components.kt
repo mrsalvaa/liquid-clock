@@ -38,6 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -76,6 +78,7 @@ fun GlassSurface(
     tint: Color? = null,
     frost: Dp = 6.dp,
     refraction: Boolean = true,
+    shadowRadius: Dp = 20.dp,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
@@ -110,7 +113,7 @@ fun GlassSurface(
                 },
                 highlight = { Highlight.Default.copy(alpha = if (p.dark) 0.75f else 1f) },
                 shadow = {
-                    Shadow(radius = 20.dp, color = Color.Black.copy(alpha = if (p.dark) 0.4f else 0.1f))
+                    Shadow(radius = shadowRadius, color = Color.Black.copy(alpha = if (p.dark) 0.4f else 0.1f))
                 },
                 layerBlock = {
                     scaleX = sx
@@ -240,6 +243,7 @@ fun GlassChip(
         shape = shape,
         tint = if (selected) p.accent.copy(alpha = 0.5f) else null,
         frost = 4.dp,
+        shadowRadius = 6.dp,
         onClick = onClick,
         onLongClick = onLongClick,
     ) {
@@ -301,6 +305,7 @@ fun GlassTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     textStyle: TextStyle? = null,
     singleLine: Boolean = true,
+    focusRequester: FocusRequester? = null,
 ) {
     val p = LocalGlass.current
     val style = textStyle ?: TextStyle(fontSize = 17.sp)
@@ -316,7 +321,9 @@ fun GlassTextField(
                 textStyle = style.copy(color = p.content),
                 cursorBrush = SolidColor(p.accent),
                 keyboardOptions = keyboardOptions,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
             )
         }
     }

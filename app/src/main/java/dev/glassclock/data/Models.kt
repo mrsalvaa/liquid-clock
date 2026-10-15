@@ -68,6 +68,8 @@ data class AppSettings(
     val volumeKeysSnooze: Boolean = true,
     val autoSilenceMinutes: Int = 10,
     val animatedBackground: Boolean = true,
+    /** Índice en COLOR_SETS. */
+    val colorSet: Int = 0,
     /** Sonido de las alarmas que usan el predeterminado. null = el del sistema. */
     val alarmRingtoneUri: String? = null,
     val timerRingtoneUri: String? = null,

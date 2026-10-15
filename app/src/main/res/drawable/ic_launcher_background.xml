@@ -5,19 +5,31 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <path
+        android:fillColor="#FF05070C"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- Resplandor celeste -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endColor="@color/icon_bg_end"
-                android:endX="108"
-                android:endY="108"
-                android:startColor="@color/icon_bg_start"
-                android:startX="0"
-                android:startY="0"
-                android:type="linear" />
+                android:type="radial"
+                android:centerX="30"
+                android:centerY="28"
+                android:gradientRadius="62"
+                android:startColor="#8038BDF8"
+                android:endColor="#0038BDF8" />
         </aapt:attr>
     </path>
-    <path
-        android:fillColor="#55FF6FB5"
-        android:pathData="M80,20m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0" />
+    <!-- Resplandor rosa -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="82"
+                android:centerY="86"
+                android:gradientRadius="60"
+                android:startColor="#80F472B6"
+                android:endColor="#00F472B6" />
+        </aapt:attr>
+    </path>
 </vector>

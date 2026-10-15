@@ -34,6 +34,9 @@ import dev.glassclock.ui.glass.GlassSurface
 import dev.glassclock.ui.glass.LocalActionSheet
 import dev.glassclock.ui.glass.LocalGlass
 import dev.glassclock.ui.glass.SheetSpec
+import dev.glassclock.ui.glass.LocalPrompt
+import dev.glassclock.ui.glass.PromptHost
+import dev.glassclock.ui.glass.PromptSpec
 import dev.glassclock.ui.screens.missingPermissions
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -117,8 +120,8 @@ class MainActivity : ComponentActivity() {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         setContent {
-            GlassTheme {
-                val settings by Stores.settings.state.collectAsStateWithLifecycle()
+            val settings by Stores.settings.state.collectAsStateWithLifecycle()
+            GlassTheme(settings.colorSet) {
                 App(settings.animatedBackground, requestedTab) { requestedTab = null }
             }
         }
@@ -139,6 +142,7 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
     var tab by rememberSaveable { mutableIntStateOf(TAB_ALARM) }
     var overlay by remember { mutableStateOf<Overlay?>(null) }
     var sheet by remember { mutableStateOf<SheetSpec?>(null) }
+    var prompt by remember { mutableStateOf<PromptSpec?>(null) }
     LaunchedEffect(requestedTab) {
         if (requestedTab != null) {
             tab = requestedTab
@@ -146,7 +150,7 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
             onTabConsumed()
         }
     }
-    BackHandler(enabled = overlay != null && sheet == null) { overlay = null }
+    BackHandler(enabled = overlay != null && sheet == null && prompt == null) { overlay = null }
 
     val insets = WindowInsets.safeDrawing.asPaddingValues()
     val dir = LocalLayoutDirection.current
@@ -162,7 +166,10 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
         bottom = insets.calculateBottomPadding(),
     )
 
-    CompositionLocalProvider(LocalActionSheet provides { sheet = it }) {
+    CompositionLocalProvider(
+        LocalActionSheet provides { sheet = it },
+        LocalPrompt provides { prompt = it },
+    ) {
         GlassRoot(
             animated = animated,
             floating = {
@@ -188,6 +195,7 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
                 }
                 PermissionPrompt()
                 ActionSheetHost(sheet) { sheet = null }
+                PromptHost(prompt) { prompt = null }
             },
         ) {
             AnimatedContent(
@@ -250,7 +258,7 @@ private fun BoxScope.PermissionPrompt() {
                 Text("Faltan permisos", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                 Text(
                     "Para que la alarma suene a su hora y encienda la pantalla aunque el móvil " +
-                        "esté bloqueado, Glass Clock necesita estos permisos.",
+                        "esté bloqueado, la app necesita estos permisos.",
                     Modifier.padding(top = 6.dp, bottom = 14.dp),
                     fontSize = 14.sp,
                     color = p.contentSecondary,

@@ -343,7 +343,7 @@ class RingService : Service() {
     private fun basicNotification(): Notification =
         NotificationCompat.Builder(this, Notif.CH_RING)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Glass Clock")
+            .setContentTitle(getString(R.string.app_name))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .build()
 

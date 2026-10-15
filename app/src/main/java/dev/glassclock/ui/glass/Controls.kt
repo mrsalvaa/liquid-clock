@@ -2,13 +2,22 @@ package dev.glassclock.ui.glass
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -66,7 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -227,40 +236,40 @@ fun GlassNavBar(
 @Composable
 fun SlideToConfirm(text: String, onConfirm: () -> Unit, modifier: Modifier = Modifier) {
     val p = LocalGlass.current
-    val scope = rememberCoroutineScope()
-    val offset = remember { Animatable(0f) }
     val confirm by rememberUpdatedState(onConfirm)
+    // Posición del pulgar: se actualiza al instante durante el arrastre (sin corrutinas que
+    // puedan llegar tarde) y solo se anima al soltar.
+    var x by remember { mutableFloatStateOf(0f) }
     GlassSurface(modifier.fillMaxWidth().height(76.dp), shape = CircleShape, strong = true) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(8.dp)) {
             val thumb = 60.dp
-            val maxPx = with(LocalDensity.current) { (maxWidth - thumb).toPx() }
-            val progress = if (maxPx > 0) offset.value / maxPx else 0f
+            val maxPx = with(LocalDensity.current) { (maxWidth - thumb).toPx() }.coerceAtLeast(1f)
             Text(
                 text,
-                Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - progress },
+                Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - x / maxPx },
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = p.contentSecondary,
             )
             Box(
                 Modifier
-                    .offset { IntOffset(offset.value.roundToInt(), 0) }
+                    .offset { IntOffset(x.roundToInt(), 0) }
                     .size(thumb)
                     .clip(CircleShape)
                     .background(p.accent)
                     .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
                     .draggable(
                         orientation = Orientation.Horizontal,
-                        state = rememberDraggableState { delta ->
-                            scope.launch { offset.snapTo((offset.value + delta).coerceIn(0f, maxPx)) }
-                        },
+                        state = rememberDraggableState { delta -> x = (x + delta).coerceIn(0f, maxPx) },
                         onDragStopped = {
-                            if (offset.value > maxPx * 0.8f) {
-                                offset.animateTo(maxPx)
+                            if (x > maxPx * 0.75f) {
+                                animate(x, maxPx, animationSpec = tween(120)) { v, _ -> x = v }
                                 confirm()
-                                offset.snapTo(0f)
-                            } else {
-                                offset.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = 400f))
+                                // Por si la pantalla no se cierra (p. ej. ya no sonaba nada).
+                                delay(400)
+                            }
+                            animate(x, 0f, animationSpec = spring(dampingRatio = 0.55f, stiffness = 400f)) { v, _ ->
+                                x = v
                             }
                         },
                     ),
@@ -347,6 +356,82 @@ fun BoxScope.ActionSheetHost(spec: SheetSpec?, onDismiss: () -> Unit) {
                         Box(Modifier.width(16.dp))
                         Text(action.label, fontSize = 16.sp, color = color)
                     }
+                }
+            }
+        }
+    }
+}
+
+data class PromptSpec(
+    val title: String,
+    val confirmLabel: String,
+    val placeholder: String,
+    val subtitle: String? = null,
+    val onConfirm: (String) -> Unit,
+)
+
+/** Pide un texto con una tarjeta de cristal centrada. La pinta [PromptHost]. */
+val LocalPrompt = staticCompositionLocalOf<(PromptSpec) -> Unit> { {} }
+
+@Composable
+fun BoxScope.PromptHost(spec: PromptSpec?, onDismiss: () -> Unit) {
+    val p = LocalGlass.current
+    var last by remember { mutableStateOf(spec) }
+    if (spec != null && spec !== last) last = spec
+    BackHandler(enabled = spec != null, onBack = onDismiss)
+
+    AnimatedVisibility(spec != null, enter = fadeIn(), exit = fadeOut()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss),
+        )
+    }
+    AnimatedVisibility(
+        spec != null,
+        modifier = Modifier.align(Alignment.Center).imePadding().padding(20.dp),
+        enter = fadeIn() + scaleIn(initialScale = 0.9f),
+        exit = fadeOut() + scaleOut(targetScale = 0.9f),
+    ) {
+        val s = last ?: return@AnimatedVisibility
+        // Cada apertura es un PromptSpec nuevo: el texto empieza vacío.
+        var text by remember(s) { mutableStateOf("") }
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(s) { focus.requestFocus() }
+        GlassSurface(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(34.dp),
+            strong = true,
+            frost = 16.dp,
+        ) {
+            Column(Modifier.padding(24.dp)) {
+                Text(s.title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                if (s.subtitle != null) {
+                    Text(s.subtitle, fontSize = 14.sp, color = p.contentSecondary)
+                }
+                Box(Modifier.height(16.dp))
+                GlassTextField(
+                    text,
+                    { text = it },
+                    s.placeholder,
+                    focusRequester = focus,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done,
+                    ),
+                )
+                Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GlassButton("Cancelar", onDismiss, Modifier.weight(1f))
+                    GlassButton(
+                        s.confirmLabel,
+                        {
+                            onDismiss()
+                            s.onConfirm(text.trim())
+                        },
+                        Modifier.weight(1f),
+                        prominent = true,
+                    )
                 }
             }
         }

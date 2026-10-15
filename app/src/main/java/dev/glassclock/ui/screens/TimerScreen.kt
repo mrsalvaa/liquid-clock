@@ -23,10 +23,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +53,8 @@ import dev.glassclock.ui.glass.GlassIconButton
 import dev.glassclock.ui.glass.GlassTextField
 import dev.glassclock.ui.glass.LocalActionSheet
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.LocalPrompt
+import dev.glassclock.ui.glass.PromptSpec
 import dev.glassclock.ui.glass.SheetAction
 import dev.glassclock.ui.glass.SheetSpec
 import dev.glassclock.ui.glass.ScreenTitle
@@ -74,9 +73,20 @@ fun TimerScreen(contentPadding: PaddingValues) {
     var m by rememberSaveable { mutableStateOf(5) }
     var s by rememberSaveable { mutableStateOf(0) }
     var label by rememberSaveable { mutableStateOf("") }
-    var savingPreset by remember { mutableStateOf(false) }
     val duration = (h * 3600L + m * 60L + s) * 1000L
     val showSheet = LocalActionSheet.current
+    val showPrompt = LocalPrompt.current
+    val savePreset = {
+        val d = duration
+        showPrompt(
+            PromptSpec(
+                title = "Guardar preajuste",
+                subtitle = formatDurationShort(d),
+                placeholder = "Nombre",
+                confirmLabel = "Guardar",
+            ) { name -> Timers.savePreset(name.ifBlank { formatDurationShort(d) }, d) },
+        )
+    }
 
     LazyColumn(
         contentPadding = contentPadding,
@@ -88,7 +98,7 @@ fun TimerScreen(contentPadding: PaddingValues) {
                 GlassIconButton(
                     Icons.Rounded.BookmarkAdd,
                     "Guardar preajuste",
-                    { savingPreset = true },
+                    savePreset,
                     enabled = duration > 0,
                 )
             }
@@ -110,7 +120,10 @@ fun TimerScreen(contentPadding: PaddingValues) {
         }
         if (presets.isNotEmpty()) {
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                ) {
                     items(presets, key = { it.id }) { preset ->
                         GlassChip(
                             "${preset.label} · ${formatDurationShort(preset.durationMs)}",
@@ -165,30 +178,6 @@ fun TimerScreen(contentPadding: PaddingValues) {
         items(timers.reversed(), key = { it.id }) { timer ->
             TimerCard(timer, now)
         }
-    }
-
-    if (savingPreset) {
-        var name by remember { mutableStateOf(label) }
-        AlertDialog(
-            onDismissRequest = { savingPreset = false },
-            title = { Text("Guardar preajuste") },
-            text = {
-                Column {
-                    Text(formatDurationShort(duration), color = p.contentSecondary)
-                    Spacer(Modifier.size(12.dp))
-                    OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("Nombre") })
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    Timers.savePreset(name.trim().ifBlank { formatDurationShort(duration) }, duration)
-                    savingPreset = false
-                }) { Text("Guardar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { savingPreset = false }) { Text("Cancelar") }
-            },
-        )
     }
 }
 

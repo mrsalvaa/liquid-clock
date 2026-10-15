@@ -28,7 +28,7 @@ class RingActivity : ComponentActivity() {
             override fun handleOnBackPressed() = Unit
         })
         setContent {
-            GlassTheme {
+            GlassTheme(Stores.settings.value.colorSet) {
                 val state by RingService.current.collectAsStateWithLifecycle()
                 LaunchedEffect(state) { if (state == null) finish() }
                 GlassRoot(animated = Stores.settings.value.animatedBackground) {
