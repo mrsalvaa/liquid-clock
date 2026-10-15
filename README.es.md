@@ -65,7 +65,7 @@ Descarga el APK desde [Releases](../../releases) e instálalo (Android 12 o supe
 Comprueba que el archivo no está alterado:
 
 ```bash
-sha256sum -c liquid-clock-v0.2.3.apk.sha256
+sha256sum -c liquid-clock-v0.2.4.apk.sha256
 ```
 
 Y que está firmado con la clave del proyecto (huella SHA-256 del certificado):
@@ -75,7 +75,7 @@ D3:09:86:98:9C:2F:A7:E2:EA:C4:44:E1:B3:1F:0B:48:18:C8:EA:57:FE:21:9A:BD:D6:A3:BF
 ```
 
 ```bash
-apksigner verify --print-certs liquid-clock-v0.2.3.apk
+apksigner verify --print-certs liquid-clock-v0.2.4.apk
 ```
 
 Al abrirla por primera vez, concede los permisos que pide, sobre todo **pantalla completa**:

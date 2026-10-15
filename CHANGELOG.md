@@ -2,6 +2,15 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## 0.2.4
+
+### Fixed
+- Swiping between tabs could stop working for good after pushing past the last tab (World clock) right after a fast swipe. Tabs now use their own gesture handling, and pushing against the edge no longer bounces.
+
+### Changed
+- Dates are shown as day/month/year, for example "Thursday 15/10/2026" in the world clock and "Fri 17/10" in the alarm list.
+- "Turn off until tomorrow" is now called "Turn off just for today" ("Desactivar solo por hoy").
+
 ## 0.2.3
 
 ### Improved

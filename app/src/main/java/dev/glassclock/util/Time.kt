@@ -4,7 +4,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.text.format.DateFormat
-import dev.glassclock.data.Stores
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -82,27 +81,15 @@ fun relativeDay(target: ZonedDateTime, today: LocalDate = LocalDate.now(target.z
         today -> "Hoy"
         today.plusDays(1) -> "Mañana"
         today.minusDays(1) -> "Ayer"
-        else -> when (dateFormat()) {
-            1 -> DateTimeFormatter.ofPattern("EEE dd/MM", SPANISH).format(target)
-            2 -> DateTimeFormatter.ofPattern("EEE MM/dd", SPANISH).format(target)
-            else -> DateTimeFormatter.ofPattern("EEE, d MMM", SPANISH).format(target)
-        }.replace(".", "")
+        else -> DateTimeFormatter.ofPattern("EEE dd/MM", SPANISH).format(target).replace(".", "")
     }
 }
 
-/** "Jueves, 15 de octubre", "Jueves 15/10/2026" o "Jueves 10/15/2026" según Ajustes. */
-fun formatLongDate(epochMs: Long): String {
-    val pattern = when (dateFormat()) {
-        1 -> "EEEE dd/MM/yyyy"
-        2 -> "EEEE MM/dd/yyyy"
-        else -> "EEEE, d 'de' MMMM"
-    }
-    return DateTimeFormatter.ofPattern(pattern, SPANISH)
+/** "Jueves 15/10/2026": siempre día/mes/año. */
+fun formatLongDate(epochMs: Long): String =
+    DateTimeFormatter.ofPattern("EEEE dd/MM/yyyy", SPANISH)
         .format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
         .replaceFirstChar { it.uppercase() }
-}
-
-private fun dateFormat(): Int = runCatching { Stores.settings.value.dateFormat }.getOrDefault(0)
 
 /** Cronómetro: "01:23.45" o "1:01:23.45". */
 fun formatStopwatch(ms: Long): String {

@@ -2,6 +2,15 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 0.2.4
+
+### Correcciones
+- Deslizar entre pestañas podía dejar de funcionar para siempre al empujar más allá de la última pestaña (Mundial) justo después de un deslizamiento rápido. Ahora las pestañas usan su propio manejo del gesto, y al empujar contra el borde ya no rebotan.
+
+### Cambios
+- Las fechas se muestran como día/mes/año, por ejemplo "Jueves 15/10/2026" en el reloj mundial y "vie 17/10" en la lista de alarmas.
+- "Desactivar hasta mañana" pasa a llamarse "Desactivar solo por hoy".
+
 ## 0.2.3
 
 ### Mejoras
