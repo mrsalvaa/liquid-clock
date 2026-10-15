@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GlassClock"
+rootProject.name = "LiquidClock"
 include(":app")

@@ -1,10 +1,20 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+// Clave de release fuera del repo. Ruta configurable con -PsigningProps=... o la variable
+// de entorno LIQUID_CLOCK_SIGNING; si no existe, la release se firma con la clave de debug.
+val signingProps = (findProperty("signingProps") as String?)
+    ?: System.getenv("LIQUID_CLOCK_SIGNING")
+    ?: "${System.getProperty("user.home")}/.android-keys/liquid-clock.properties"
+val releaseSigning = file(signingProps).takeIf { it.exists() }?.let { f ->
+    Properties().apply { f.inputStream().use(::load) }
 }
 
 android {
@@ -19,7 +29,22 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -27,8 +52,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Uso personal: firma la release con la clave de debug para poder instalarla directamente.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 

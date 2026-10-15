@@ -1,4 +1,6 @@
-# Glass Clock
+# Liquid Clock
+
+Se instala en el móvil como **Reloj** (o *Clock*, según el idioma).
 
 Reloj para Android libre y sin rastreo, con interfaz de estilo *Liquid Glass* de Apple: superficies de cristal que refractan lo que tienen detrás como una lente (gracias a [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass)), con brillo en los bordes y botones que se deforman como una gota al pulsarlos.
 
@@ -27,6 +29,29 @@ Mantén pulsada una alarma, un temporizador o una ciudad para ver sus opciones (
 
 **Modo sueño**: recordatorio para acostarte con el tiempo de sueño que tendrás hasta tu próxima alarma.
 
+## Descargar
+
+Descarga el APK desde [Releases](../../releases) e instálalo (Android 12 o superior).
+
+Comprueba que el archivo no está alterado:
+
+```bash
+sha256sum -c liquid-clock-v0.1.0.apk.sha256
+```
+
+Y que está firmado con la clave del proyecto (huella SHA-256 del certificado):
+
+```
+D3:09:86:98:9C:2F:A7:E2:EA:C4:44:E1:B3:1F:0B:48:18:C8:EA:57:FE:21:9A:BD:D6:A3:BF:61:1F:86:BE:29
+```
+
+```bash
+apksigner verify --print-certs liquid-clock-v0.1.0.apk
+```
+
+Al abrirla por primera vez, concede los permisos que pide, sobre todo **pantalla completa**:
+sin él la alarma no enciende la pantalla del móvil bloqueado.
+
 ## Compilar
 
 Requisitos: JDK 17 y Android SDK (plataforma 35 y build-tools).
@@ -51,7 +76,18 @@ Compila e instala:
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-`./gradlew assembleRelease` genera un APK minimizado firmado con la clave de depuración, pensado para instalarlo en tu propio teléfono.
+La build de depuración se instala como `dev.glassclock.debug`, así que convive con la release.
+
+`./gradlew assembleRelease` genera un APK minimizado. Se firma con la clave descrita en
+`~/.android-keys/liquid-clock.properties` (o la ruta de `-PsigningProps=...` o de la variable
+`LIQUID_CLOCK_SIGNING`); si no existe, usa la clave de depuración:
+
+```properties
+storeFile=/ruta/a/la/clave.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
 
 ## Permisos
 
