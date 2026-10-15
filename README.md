@@ -42,12 +42,14 @@ Swipe left or right to change tabs. Tap the number in any wheel to type it with 
 
 ## Download
 
+See what changed in each version in the [changelog](CHANGELOG.md).
+
 Get the APK from [Releases](../../releases) and install it (Android 12 or newer).
 
 Check that the file hasn't been tampered with:
 
 ```bash
-sha256sum -c liquid-clock-v0.1.0.apk.sha256
+sha256sum -c liquid-clock-v0.2.1.apk.sha256
 ```
 
 And that it's signed with the project key (SHA-256 certificate fingerprint):
@@ -57,7 +59,7 @@ D3:09:86:98:9C:2F:A7:E2:EA:C4:44:E1:B3:1F:0B:48:18:C8:EA:57:FE:21:9A:BD:D6:A3:BF
 ```
 
 ```bash
-apksigner verify --print-certs liquid-clock-v0.1.0.apk
+apksigner verify --print-certs liquid-clock-v0.2.1.apk
 ```
 
 On first launch, grant the permissions it asks for, especially **full screen**:

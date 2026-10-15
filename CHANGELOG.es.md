@@ -1,0 +1,31 @@
+# Registro de cambios
+
+[English](CHANGELOG.md) | **Español**
+
+## 0.2.1
+
+### Novedades
+- Grupos de alarmas. Cada grupo se puede plegar y tiene su propio interruptor, que enciende o apaga todas sus alarmas a la vez; cada alarma conserva el suyo. Las alarmas se pueden mover entre grupos, y un grupo se puede eliminar con sus alarmas o sin ellas.
+- Desactivar una alarma que se repite solo por hoy: mañana se reactiva sola.
+- Notificación 2 horas antes de cada alarma para descartar solo esa vez. Se puede desactivar en Ajustes.
+- Deslizar a izquierda o derecha para cambiar de pestaña. La burbuja de la barra inferior sigue al dedo.
+- Tocar el número de cualquier rueda para escribirlo con el teclado.
+- Ajustes de apariencia:
+  - Tema del sistema, claro u oscuro.
+  - Fondo de colores en movimiento o de un solo color de énfasis. Hay 10 colores con 3 tonos cada uno.
+  - Iconos alternativos de la app al estilo Material, Samsung, iPhone y Motorola.
+- El botón Hecho del teclado confirma los diálogos.
+
+### Mejoras
+- Más fluida a 120 Hz. El fondo animado ya no redibuja el cristal en cada fotograma (unos 16 por segundo en reposo en vez de 120), y las pestañas cambian al instante sin reconstruir la pantalla.
+- La cabecera de alarmas ahora dice "Próxima alarma en 8 hs 54 min ·" y debajo el día y la hora.
+
+### Correcciones
+- Los ":" de las ruedas del temporizador quedaban más bajos que los números.
+- Al encadenar deslizamientos rápidos entre pestañas, el gesto se bloqueaba un momento.
+- Al terminar de deslizar, la burbuja de la barra volvía atrás antes de ir a la pestaña nueva.
+- Al cambiar de tema, el cristal podía quedarse con el tinte del tema anterior.
+
+## 0.1.0
+
+Primera versión: alarmas con posponer ajustable mientras suena, cronómetro, temporizadores, reloj mundial, recordatorio para dormir e interfaz Liquid Glass.
