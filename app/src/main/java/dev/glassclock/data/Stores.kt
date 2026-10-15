@@ -64,15 +64,7 @@ object Stores {
         val dir = context.filesDir
         alarms = JsonStore(File(dir, "alarms.json"), ListSerializer(Alarm.serializer()), emptyList())
         timers = JsonStore(File(dir, "timers.json"), ListSerializer(TimerItem.serializer()), emptyList())
-        presets = JsonStore(
-            File(dir, "presets.json"),
-            ListSerializer(TimerPreset.serializer()),
-            listOf(
-                TimerPreset(1, "Té", 3 * 60_000L),
-                TimerPreset(2, "Pasta", 10 * 60_000L),
-                TimerPreset(3, "Siesta", 20 * 60_000L),
-            ),
-        )
+        presets = JsonStore(File(dir, "presets.json"), ListSerializer(TimerPreset.serializer()), emptyList())
         cities = JsonStore(File(dir, "cities.json"), ListSerializer(String.serializer()), emptyList())
         stopwatch = JsonStore(File(dir, "stopwatch.json"), StopwatchData.serializer(), StopwatchData())
         settings = JsonStore(File(dir, "settings.json"), AppSettings.serializer(), AppSettings())

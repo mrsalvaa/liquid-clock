@@ -18,11 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material3.Icon
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +39,10 @@ import dev.glassclock.ui.glass.GlassCard
 import dev.glassclock.ui.glass.GlassIconButton
 import dev.glassclock.ui.glass.GlassSurface
 import dev.glassclock.ui.glass.GlassTextField
+import dev.glassclock.ui.glass.LocalActionSheet
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.SheetAction
+import dev.glassclock.ui.glass.SheetSpec
 import dev.glassclock.ui.glass.ScreenTitle
 import dev.glassclock.util.formatInstantClock
 import dev.glassclock.util.formatLongDate
@@ -111,33 +110,26 @@ private fun CityRow(zoneId: String, now: Long, is24: Boolean, localZone: ZoneId)
     val instant = Instant.ofEpochMilli(now)
     val diff = zone.rules.getOffset(instant).totalSeconds - localZone.rules.getOffset(instant).totalSeconds
     val day = relativeDay(instant.atZone(zone), instant.atZone(localZone).toLocalDate())
-    val state = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            if (it != SwipeToDismissBoxValue.Settled) {
-                Stores.cities.update { list -> list - zoneId }
-                true
-            } else {
-                false
+    val showSheet = LocalActionSheet.current
+    GlassCard(onLongClick = {
+        showSheet(
+            SheetSpec(
+                cityName(zoneId),
+                subtitle = regionName(zoneId),
+                actions = listOf(
+                    SheetAction("Quitar ciudad", Icons.Rounded.Delete, danger = true) {
+                        Stores.cities.update { list -> list - zoneId }
+                    },
+                ),
+            ),
+        )
+    }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(cityName(zoneId), fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                Text("$day, ${formatOffsetDiff(diff)}", fontSize = 13.sp, color = p.contentSecondary)
             }
-        },
-    )
-    SwipeToDismissBox(
-        state = state,
-        backgroundContent = {
-            Box(Modifier.fillMaxSize().padding(horizontal = 28.dp), contentAlignment = Alignment.CenterEnd) {
-                Icon(Icons.Rounded.Delete, "Eliminar", tint = p.danger)
-            }
-        },
-        enableDismissFromStartToEnd = false,
-    ) {
-        GlassCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(cityName(zoneId), fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
-                    Text("$day, ${formatOffsetDiff(diff)}", fontSize = 13.sp, color = p.contentSecondary)
-                }
-                Text(formatInstantClock(now, is24, zone), fontSize = 34.sp, fontWeight = FontWeight.Light)
-            }
+            Text(formatInstantClock(now, is24, zone), fontSize = 34.sp, fontWeight = FontWeight.Light)
         }
     }
 }
@@ -149,7 +141,7 @@ fun AnalogClock(now: Long, modifier: Modifier = Modifier) {
     val seconds = t.second.toFloat()
     val minutes = t.minute + seconds / 60f
     val hours = (t.hour % 12) + minutes / 60f
-    GlassSurface(modifier, shape = CircleShape, strong = true, blur = 32.dp) {
+    GlassSurface(modifier, shape = CircleShape, strong = true, frost = 8.dp) {
         Canvas(Modifier.fillMaxSize().padding(14.dp)) {
             val r = size.minDimension / 2
             val c = center

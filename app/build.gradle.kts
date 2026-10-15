@@ -66,5 +66,5 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.haze)
+    implementation(libs.backdrop)
 }

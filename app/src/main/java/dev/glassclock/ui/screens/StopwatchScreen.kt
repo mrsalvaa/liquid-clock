@@ -91,7 +91,7 @@ fun StopwatchScreen(contentPadding: PaddingValues) {
         item { ScreenTitle("Cronómetro") }
         item {
             Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                GlassSurface(Modifier.size(280.dp), shape = CircleShape, strong = true, blur = 32.dp) {
+                GlassSurface(Modifier.size(280.dp), shape = CircleShape, strong = true, frost = 8.dp) {
                     Canvas(Modifier.fillMaxSize().padding(10.dp)) {
                         val stroke = 6.dp.toPx()
                         val inset = stroke / 2

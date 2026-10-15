@@ -1,15 +1,12 @@
 package dev.glassclock.ring
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.glassclock.data.DismissTask
 import dev.glassclock.ui.glass.GlassButton
 import dev.glassclock.ui.glass.GlassCard
 import dev.glassclock.ui.glass.GlassChip
@@ -58,36 +54,8 @@ import dev.glassclock.util.is24h
 @Composable
 fun RingScreen(state: RingState) {
     val context = LocalContext.current
-    var solving by remember(state.id, state.kind) { mutableStateOf(false) }
-    var lastDuck by remember { mutableStateOf(0L) }
-    val onInteract = {
-        val t = System.currentTimeMillis()
-        if (t - lastDuck > 5_000) {
-            lastDuck = t
-            RingService.send(context, RingService.ACTION_DUCK)
-        }
-    }
-    val dismiss = { RingService.send(context, RingService.ACTION_DISMISS) }
-
-    AnimatedContent(
-        targetState = solving,
-        transitionSpec = { fadeIn() togetherWith fadeOut() },
-        label = "ring",
-        modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp),
-    ) { isSolving ->
-        if (isSolving) {
-            DismissTaskScreen(state, onSolved = dismiss, onInteract = onInteract, onBack = { solving = false })
-        } else {
-            RingMain(
-                state,
-                onDismiss = {
-                    if (state.task == DismissTask.NONE) dismiss() else {
-                        onInteract()
-                        solving = true
-                    }
-                },
-            )
-        }
+    Box(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
+        RingMain(state, onDismiss = { RingService.send(context, RingService.ACTION_DISMISS) })
     }
 }
 
@@ -151,11 +119,7 @@ private fun RingMain(state: RingState, onDismiss: () -> Unit) {
                 }
             }
             SlideToConfirm(
-                text = when {
-                    state.kind == RingState.Kind.TIMER -> "Desliza para detener"
-                    state.task == DismissTask.NONE -> "Desliza para descartar"
-                    else -> "Desliza para resolver la tarea"
-                },
+                text = if (state.kind == RingState.Kind.TIMER) "Desliza para detener" else "Desliza para descartar",
                 onConfirm = onDismiss,
             )
         }

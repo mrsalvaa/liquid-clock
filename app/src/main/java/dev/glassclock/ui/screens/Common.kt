@@ -27,7 +27,7 @@ fun rememberNow(periodMs: Long = 1000): State<Long> =
 
 /** null = predeterminado, "" = silencio. */
 fun ringtoneTitle(context: Context, uri: String?): String = when (uri) {
-    null -> "Predeterminado"
+    null -> "Predeterminado del sistema"
     "" -> "Silencio"
     else -> try {
         RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context) ?: "Desconocido"

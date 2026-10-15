@@ -38,7 +38,6 @@ import dev.glassclock.alarm.Alarms
 import dev.glassclock.alarm.isRepeating
 import dev.glassclock.alarm.nextTrigger
 import dev.glassclock.data.Alarm
-import dev.glassclock.data.DismissTask
 import dev.glassclock.data.Stores
 import dev.glassclock.ui.glass.DaySelector
 import dev.glassclock.ui.glass.GlassButton
@@ -136,7 +135,13 @@ fun AlarmEditScreen(alarmId: Int?, contentPadding: PaddingValues, onClose: () ->
         GlassCard {
             SettingRow(
                 "Sonido",
-                subtitle = remember(draft.ringtoneUri) { ringtoneTitle(context, draft.ringtoneUri) },
+                subtitle = remember(draft.ringtoneUri, settings.alarmRingtoneUri) {
+                    if (draft.ringtoneUri == null) {
+                        "Predeterminado (${ringtoneTitle(context, settings.alarmRingtoneUri)})"
+                    } else {
+                        ringtoneTitle(context, draft.ringtoneUri)
+                    }
+                },
                 onClick = { pickRingtone(draft.ringtoneUri) },
             )
             SettingRow("Vibración") {
@@ -178,53 +183,6 @@ fun AlarmEditScreen(alarmId: Int?, contentPadding: PaddingValues, onClose: () ->
             }
         }
 
-        SectionLabel("Tarea para apagar")
-        GlassCard {
-            ChipRow(
-                options = DismissTask.entries.toList(),
-                selected = draft.task,
-                label = {
-                    when (it) {
-                        DismissTask.NONE -> "Ninguna"
-                        DismissTask.MATH -> "Cálculo"
-                        DismissTask.SHAKE -> "Agitar"
-                        DismissTask.TYPE -> "Escribir"
-                    }
-                },
-                onSelect = { draft = draft.copy(task = it, taskAmount = defaultAmount(it)) },
-            )
-            when (draft.task) {
-                DismissTask.NONE -> Unit
-                DismissTask.MATH -> {
-                    Text("Dificultad", fontSize = 13.sp, color = p.contentSecondary, modifier = Modifier.padding(top = 10.dp))
-                    ChipRow(
-                        options = listOf(0, 1, 2),
-                        selected = draft.taskDifficulty,
-                        label = { listOf("Fácil", "Media", "Difícil")[it] },
-                        onSelect = { draft = draft.copy(taskDifficulty = it) },
-                    )
-                    Text("Problemas", fontSize = 13.sp, color = p.contentSecondary, modifier = Modifier.padding(top = 10.dp))
-                    ChipRow(listOf(1, 2, 3, 5), draft.taskAmount, { "$it" }) { draft = draft.copy(taskAmount = it) }
-                }
-                DismissTask.SHAKE -> {
-                    Text("Sacudidas", fontSize = 13.sp, color = p.contentSecondary, modifier = Modifier.padding(top = 10.dp))
-                    ChipRow(listOf(10, 20, 30, 50), draft.taskAmount, { "$it" }) { draft = draft.copy(taskAmount = it) }
-                }
-                DismissTask.TYPE -> {
-                    Text("Frases", fontSize = 13.sp, color = p.contentSecondary, modifier = Modifier.padding(top = 10.dp))
-                    ChipRow(listOf(1, 2, 3), draft.taskAmount, { "$it" }) { draft = draft.copy(taskAmount = it) }
-                }
-            }
-            if (draft.task != DismissTask.NONE && !settings.dismissTasksEnabled) {
-                Text(
-                    "Las tareas están desactivadas en Ajustes: esta alarma se apagará sin tarea.",
-                    fontSize = 13.sp,
-                    color = p.danger,
-                    modifier = Modifier.padding(top = 10.dp),
-                )
-            }
-        }
-
         if (existing != null) {
             Spacer(Modifier.height(20.dp))
             if (existing.enabled && existing.isRepeating) {
@@ -253,13 +211,6 @@ fun AlarmEditScreen(alarmId: Int?, contentPadding: PaddingValues, onClose: () ->
         }
         Spacer(Modifier.height(24.dp))
     }
-}
-
-private fun defaultAmount(task: DismissTask) = when (task) {
-    DismissTask.MATH -> 3
-    DismissTask.SHAKE -> 20
-    DismissTask.TYPE -> 1
-    DismissTask.NONE -> 0
 }
 
 @Composable

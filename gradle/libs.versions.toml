@@ -1,12 +1,12 @@
 [versions]
 agp = "8.9.3"
-kotlin = "2.1.21"
-composeBom = "2025.05.01"
+kotlin = "2.2.21"
+composeBom = "2025.10.01"
 coreKtx = "1.16.0"
 activityCompose = "1.10.1"
 lifecycle = "2.9.0"
 serialization = "1.8.1"
-haze = "1.6.10"
+backdrop = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -20,7 +20,7 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
-haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
+backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

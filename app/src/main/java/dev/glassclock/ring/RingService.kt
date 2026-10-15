@@ -1,6 +1,7 @@
 package dev.glassclock.ring
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -22,7 +23,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import dev.glassclock.R
 import dev.glassclock.alarm.Alarms
-import dev.glassclock.data.DismissTask
 import dev.glassclock.data.Stores
 import dev.glassclock.timer.Timers
 import dev.glassclock.util.Notif
@@ -47,9 +47,6 @@ data class RingState(
     val snoozeDefault: Int,
     /** null = ilimitado. */
     val snoozesLeft: Int?,
-    val task: DismissTask,
-    val taskDifficulty: Int,
-    val taskAmount: Int,
 ) {
     enum class Kind { ALARM, TIMER }
 }
@@ -130,7 +127,6 @@ class RingService : Service() {
         val alarm = Alarms.get(id)?.takeIf { it.enabled } ?: return
         _current.value?.let { replacePrevious(it) }
         Alarms.onFired(this, id)
-        val settings = Stores.settings.value
         val left = if (alarm.snoozeMaxCount == 0) null else alarm.snoozeMaxCount - alarm.snoozeCount
         val state = RingState(
             kind = RingState.Kind.ALARM,
@@ -139,11 +135,9 @@ class RingService : Service() {
             snoozeAllowed = alarm.snoozeEnabled && (left == null || left > 0),
             snoozeDefault = alarm.snoozeMinutes,
             snoozesLeft = left,
-            task = if (settings.dismissTasksEnabled) alarm.task else DismissTask.NONE,
-            taskDifficulty = alarm.taskDifficulty,
-            taskAmount = alarm.taskAmount,
         )
-        begin(state, alarm.ringtoneUri, alarm.crescendo, alarm.crescendoSeconds, alarm.vibrate)
+        val sound = alarm.ringtoneUri ?: Stores.settings.value.alarmRingtoneUri
+        begin(state, sound, alarm.crescendo, alarm.crescendoSeconds, alarm.vibrate)
     }
 
     private fun startTimer(id: Int) {
@@ -157,9 +151,6 @@ class RingService : Service() {
             snoozeAllowed = false,
             snoozeDefault = 1,
             snoozesLeft = null,
-            task = DismissTask.NONE,
-            taskDifficulty = 0,
-            taskAmount = 0,
         )
         begin(state, Stores.settings.value.timerRingtoneUri, crescendo = false, crescendoSeconds = 0, vibrate = true)
     }
@@ -168,6 +159,7 @@ class RingService : Service() {
         _current.value = state
         enterForeground(ringNotification(state))
         acquireWakeLock()
+        showRingScreen()
         startSound(uri, crescendo, crescendoSeconds)
         if (vibrate) startVibration()
         val minutes = Stores.settings.value.autoSilenceMinutes
@@ -320,7 +312,26 @@ class RingService : Service() {
             .apply { acquire(30 * 60_000L) }
     }
 
-    // --- Notificaciones ---
+    // --- Pantalla y notificaciones ---
+
+    private fun ringActivityIntent() = Intent(this, RingActivity::class.java)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION)
+
+    /**
+     * La notificación a pantalla completa abre la alarma con la pantalla apagada o bloqueada.
+     * Si el sistema no concede ese permiso, intentamos abrirla directamente (funciona si la app
+     * tiene "Mostrar sobre otras apps").
+     */
+    private fun showRingScreen() {
+        val nm = getSystemService(NotificationManager::class.java)
+        val fsiAllowed = Build.VERSION.SDK_INT < 34 || nm.canUseFullScreenIntent()
+        if (fsiAllowed && !Settings.canDrawOverlays(this)) return
+        try {
+            startActivity(ringActivityIntent())
+        } catch (e: Exception) {
+            // Bloqueado por las restricciones de inicio en segundo plano.
+        }
+    }
 
     private fun enterForeground(notification: Notification) {
         ServiceCompat.startForeground(
@@ -338,9 +349,7 @@ class RingService : Service() {
 
     private fun ringNotification(state: RingState): Notification {
         val full = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, RingActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION),
+            this, 0, ringActivityIntent(),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         fun action(action: String, code: Int, minutes: Int = 0) = PendingIntent.getService(
@@ -362,11 +371,7 @@ class RingService : Service() {
                 if (state.snoozeAllowed) {
                     builder.addAction(0, "Posponer ${state.snoozeDefault} min", action(ACTION_SNOOZE, 1, state.snoozeDefault))
                 }
-                if (state.task == DismissTask.NONE) {
-                    builder.addAction(0, "Descartar", action(ACTION_DISMISS, 2))
-                } else {
-                    builder.addAction(0, "Resolver tarea", full)
-                }
+                builder.addAction(0, "Descartar", action(ACTION_DISMISS, 2))
             }
             RingState.Kind.TIMER -> {
                 builder.addAction(0, "+1 min", action(ACTION_TIMER_ADD, 3))

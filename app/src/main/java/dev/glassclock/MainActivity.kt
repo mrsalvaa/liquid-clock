@@ -11,6 +11,30 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import dev.glassclock.ui.glass.ActionSheetHost
+import dev.glassclock.ui.glass.GlassButton
+import dev.glassclock.ui.glass.GlassSurface
+import dev.glassclock.ui.glass.LocalActionSheet
+import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.SheetSpec
+import dev.glassclock.ui.screens.missingPermissions
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -67,7 +91,9 @@ sealed interface Overlay {
 }
 
 private const val TAB_ALARM = 0
-private const val TAB_TIMER = 3
+private const val TAB_STOPWATCH = 1
+private const val TAB_TIMER = 2
+private const val TAB_WORLD = 3
 
 class MainActivity : ComponentActivity() {
 
@@ -93,9 +119,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             GlassTheme {
                 val settings by Stores.settings.state.collectAsStateWithLifecycle()
-                GlassRoot(animated = settings.animatedBackground) {
-                    App(requestedTab) { requestedTab = null }
-                }
+                App(settings.animatedBackground, requestedTab) { requestedTab = null }
             }
         }
     }
@@ -111,9 +135,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(requestedTab: Int?, onTabConsumed: () -> Unit) {
+private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(TAB_ALARM) }
     var overlay by remember { mutableStateOf<Overlay?>(null) }
+    var sheet by remember { mutableStateOf<SheetSpec?>(null) }
     LaunchedEffect(requestedTab) {
         if (requestedTab != null) {
             tab = requestedTab
@@ -121,7 +146,7 @@ private fun App(requestedTab: Int?, onTabConsumed: () -> Unit) {
             onTabConsumed()
         }
     }
-    BackHandler(enabled = overlay != null) { overlay = null }
+    BackHandler(enabled = overlay != null && sheet == null) { overlay = null }
 
     val insets = WindowInsets.safeDrawing.asPaddingValues()
     val dir = LocalLayoutDirection.current
@@ -137,49 +162,109 @@ private fun App(requestedTab: Int?, onTabConsumed: () -> Unit) {
         bottom = insets.calculateBottomPadding(),
     )
 
-    AnimatedContent(
-        targetState = overlay,
-        transitionSpec = {
-            (fadeIn(tween(220)) + scaleIn(initialScale = 0.96f)) togetherWith fadeOut(tween(150))
-        },
-        label = "overlay",
-    ) { current ->
-        when (current) {
-            null -> Box(Modifier.fillMaxSize()) {
-                AnimatedContent(
-                    targetState = tab,
-                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
-                    label = "tab",
-                ) { t ->
-                    when (t) {
-                        0 -> AlarmListScreen(
-                            tabPadding,
-                            onEdit = { overlay = Overlay.EditAlarm(it) },
-                            onSettings = { overlay = Overlay.Settings },
-                        )
-                        1 -> WorldClockScreen(tabPadding, onAddCity = { overlay = Overlay.AddCity })
-                        2 -> StopwatchScreen(tabPadding)
-                        else -> TimerScreen(tabPadding)
-                    }
+    CompositionLocalProvider(LocalActionSheet provides { sheet = it }) {
+        GlassRoot(
+            animated = animated,
+            floating = {
+                AnimatedVisibility(
+                    overlay == null,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    enter = fadeIn() + slideInVertically { it / 2 },
+                    exit = fadeOut() + slideOutVertically { it / 2 },
+                ) {
+                    GlassNavBar(
+                        items = listOf(
+                            NavItem("Alarma", Icons.Rounded.Alarm),
+                            NavItem("Cronómetro", Icons.Rounded.Timer),
+                            NavItem("Temporizador", Icons.Rounded.HourglassBottom),
+                            NavItem("Mundial", Icons.Rounded.Public),
+                        ),
+                        selected = tab,
+                        onSelect = { tab = it },
+                        modifier = Modifier
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
                 }
-                GlassNavBar(
-                    items = listOf(
-                        NavItem("Alarma", Icons.Rounded.Alarm),
-                        NavItem("Mundial", Icons.Rounded.Public),
-                        NavItem("Cronómetro", Icons.Rounded.Timer),
-                        NavItem("Temporizador", Icons.Rounded.HourglassBottom),
-                    ),
-                    selected = tab,
-                    onSelect = { tab = it },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                )
+                PermissionPrompt()
+                ActionSheetHost(sheet) { sheet = null }
+            },
+        ) {
+            AnimatedContent(
+                targetState = overlay,
+                transitionSpec = {
+                    (fadeIn(tween(220)) + scaleIn(initialScale = 0.96f)) togetherWith fadeOut(tween(150))
+                },
+                label = "overlay",
+            ) { current ->
+                when (current) {
+                    null -> AnimatedContent(
+                        targetState = tab,
+                        transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
+                        label = "tab",
+                    ) { t ->
+                        when (t) {
+                            TAB_ALARM -> AlarmListScreen(
+                                tabPadding,
+                                onEdit = { overlay = Overlay.EditAlarm(it) },
+                                onSettings = { overlay = Overlay.Settings },
+                            )
+                            TAB_STOPWATCH -> StopwatchScreen(tabPadding)
+                            TAB_TIMER -> TimerScreen(tabPadding)
+                            else -> WorldClockScreen(tabPadding, onAddCity = { overlay = Overlay.AddCity })
+                        }
+                    }
+                    is Overlay.EditAlarm -> AlarmEditScreen(current.id, overlayPadding) { overlay = null }
+                    Overlay.Settings -> SettingsScreen(overlayPadding) { overlay = null }
+                    Overlay.AddCity -> AddCityScreen(overlayPadding) { overlay = null }
+                }
             }
-            is Overlay.EditAlarm -> AlarmEditScreen(current.id, overlayPadding) { overlay = null }
-            Overlay.Settings -> SettingsScreen(overlayPadding) { overlay = null }
-            Overlay.AddCity -> AddCityScreen(overlayPadding) { overlay = null }
+        }
+    }
+}
+
+/**
+ * Al abrir la app, si falta algún permiso imprescindible (sobre todo "pantalla completa",
+ * sin el cual la alarma no enciende la pantalla), lo pide con una tarjeta en el centro.
+ */
+@Composable
+private fun BoxScope.PermissionPrompt() {
+    val context = LocalContext.current
+    val p = LocalGlass.current
+    var tick by remember { mutableIntStateOf(0) }
+    var dismissed by rememberSaveable { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { tick++ }
+    val missing = remember(tick) { missingPermissions(context) }
+    val visible = !dismissed && missing.isNotEmpty()
+    AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut()) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)))
+    }
+    AnimatedVisibility(
+        visible,
+        modifier = Modifier.align(Alignment.Center).padding(20.dp),
+        enter = fadeIn() + scaleIn(initialScale = 0.9f),
+        exit = fadeOut() + scaleOut(targetScale = 0.9f),
+    ) {
+        GlassSurface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(34.dp), strong = true, frost = 16.dp) {
+            Column(Modifier.padding(24.dp)) {
+                Text("Faltan permisos", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Para que la alarma suene a su hora y encienda la pantalla aunque el móvil " +
+                        "esté bloqueado, Glass Clock necesita estos permisos.",
+                    Modifier.padding(top = 6.dp, bottom = 14.dp),
+                    fontSize = 14.sp,
+                    color = p.contentSecondary,
+                )
+                missing.forEach { (label, intent) ->
+                    GlassButton(
+                        label,
+                        { context.startActivity(intent) },
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        prominent = true,
+                    )
+                }
+                GlassButton("Ahora no", { dismissed = true }, Modifier.fillMaxWidth().padding(top = 4.dp))
+            }
         }
     }
 }

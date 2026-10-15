@@ -1,6 +1,17 @@
 package dev.glassclock.ui.glass
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -112,7 +123,7 @@ fun WheelPicker(
             Modifier.align(Alignment.Center).fillMaxWidth().height(itemHeight),
             shape = RoundedCornerShape(16.dp),
             strong = true,
-            blur = 16.dp,
+            frost = 2.dp,
         ) {}
         LazyColumn(
             state = state,
@@ -165,7 +176,7 @@ fun GlassNavBar(
         modifier.fillMaxWidth().height(70.dp),
         shape = CircleShape,
         strong = true,
-        blur = 36.dp,
+        frost = 4.dp,
     ) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(6.dp)) {
             val itemWidth = maxWidth / items.size
@@ -256,6 +267,87 @@ fun SlideToConfirm(text: String, onConfirm: () -> Unit, modifier: Modifier = Mod
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.White)
+            }
+        }
+    }
+}
+
+data class SheetAction(
+    val label: String,
+    val icon: ImageVector,
+    val danger: Boolean = false,
+    val onClick: () -> Unit,
+)
+
+data class SheetSpec(val title: String, val actions: List<SheetAction>, val subtitle: String? = null)
+
+/** Abre un menú de opciones (al mantener pulsado un elemento). Lo pinta [ActionSheetHost]. */
+val LocalActionSheet = staticCompositionLocalOf<(SheetSpec) -> Unit> { {} }
+
+@Composable
+fun BoxScope.ActionSheetHost(spec: SheetSpec?, onDismiss: () -> Unit) {
+    val p = LocalGlass.current
+    var last by remember { mutableStateOf(spec) }
+    if (spec != null && spec !== last) last = spec
+    BackHandler(enabled = spec != null, onBack = onDismiss)
+
+    AnimatedVisibility(spec != null, enter = fadeIn(), exit = fadeOut()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f))
+                .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss),
+        )
+    }
+    AnimatedVisibility(
+        spec != null,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = slideInVertically(spring(dampingRatio = 0.8f, stiffness = 500f)) { it } + fadeIn(),
+        exit = slideOutVertically { it } + fadeOut(),
+    ) {
+        val s = last ?: return@AnimatedVisibility
+        GlassSurface(
+            Modifier
+                .navigationBarsPadding()
+                .padding(12.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(34.dp),
+            strong = true,
+            frost = 16.dp,
+        ) {
+            Column(Modifier.padding(vertical = 14.dp)) {
+                Text(
+                    s.title,
+                    Modifier.padding(horizontal = 24.dp),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (s.subtitle != null) {
+                    Text(
+                        s.subtitle,
+                        Modifier.padding(horizontal = 24.dp),
+                        fontSize = 13.sp,
+                        color = p.contentSecondary,
+                    )
+                }
+                Box(Modifier.height(8.dp))
+                s.actions.forEach { action ->
+                    val color = if (action.danger) p.danger else p.content
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onDismiss()
+                                action.onClick()
+                            }
+                            .padding(horizontal = 24.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(action.icon, null, Modifier.size(22.dp), tint = color)
+                        Box(Modifier.width(16.dp))
+                        Text(action.label, fontSize = 16.sp, color = color)
+                    }
+                }
             }
         }
     }

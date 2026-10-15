@@ -18,14 +18,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -50,38 +50,39 @@ data class GlassPalette(
 
 val DarkGlass = GlassPalette(
     dark = true,
-    base = Color(0xFF070B18),
+    base = Color(0xFF030407),
     content = Color.White,
-    contentSecondary = Color.White.copy(alpha = 0.62f),
-    tint = Color.White.copy(alpha = 0.07f),
-    tintStrong = Color.White.copy(alpha = 0.13f),
-    highlight = 0.14f,
+    contentSecondary = Color.White.copy(alpha = 0.6f),
+    tint = Color(0xFF0A0C12).copy(alpha = 0.28f),
+    tintStrong = Color(0xFF0A0C12).copy(alpha = 0.42f),
+    highlight = 0.10f,
     rim = 0.45f,
-    accent = Color(0xFF7FB2FF),
-    onAccent = Color(0xFF06122B),
-    danger = Color(0xFFFF7A85),
+    accent = Color(0xFF7CC8FF),
+    onAccent = Color(0xFF041322),
+    danger = Color(0xFFFF7A8A),
     success = Color(0xFF6EE7B7),
-    blobs = listOf(Color(0xFF4F46E5), Color(0xFF06B6D4), Color(0xFFEC4899), Color(0xFF7C3AED)),
+    blobs = listOf(Color(0xFF38BDF8), Color(0xFFF472B6), Color(0xFF0E7490), Color(0xFF9D174D)),
 )
 
 val LightGlass = GlassPalette(
     dark = false,
-    base = Color(0xFFEFF2FA),
+    base = Color(0xFFF1F3F8),
     content = Color(0xFF0E1222),
     contentSecondary = Color(0xFF0E1222).copy(alpha = 0.58f),
-    tint = Color.White.copy(alpha = 0.40f),
-    tintStrong = Color.White.copy(alpha = 0.58f),
-    highlight = 0.55f,
+    tint = Color.White.copy(alpha = 0.32f),
+    tintStrong = Color.White.copy(alpha = 0.5f),
+    highlight = 0.4f,
     rim = 0.9f,
-    accent = Color(0xFF2F6BFF),
+    accent = Color(0xFF1C7ED6),
     onAccent = Color.White,
     danger = Color(0xFFE5484D),
     success = Color(0xFF12A594),
-    blobs = listOf(Color(0xFF93A8FF), Color(0xFF7FDBFF), Color(0xFFFFADCF), Color(0xFFC4B1FF)),
+    blobs = listOf(Color(0xFFA5DCFB), Color(0xFFFBC4DE), Color(0xFF7CC8EE), Color(0xFFF5A3C7)),
 )
 
 val LocalGlass = staticCompositionLocalOf { DarkGlass }
-val LocalHaze = staticCompositionLocalOf<HazeState> { error("Falta GlassRoot") }
+/** Lo que refractan las superficies de cristal: el fondo, o el fondo más el contenido. */
+val LocalBackdrop = staticCompositionLocalOf<Backdrop> { error("Falta GlassRoot") }
 
 @Composable
 fun GlassTheme(content: @Composable () -> Unit) {
@@ -112,16 +113,27 @@ fun GlassTheme(content: @Composable () -> Unit) {
 }
 
 /**
- * Raíz de cada pantalla: un fondo de manchas de color que hace de "fuente" del desenfoque,
- * y encima el contenido, cuyas superficies de cristal desenfocan ese fondo.
+ * Raíz de cada pantalla. Hay dos capas que el cristal puede refractar:
+ * - el fondo de color, para las superficies que están dentro del contenido (tarjetas, botones);
+ * - el fondo más el contenido, para lo que flota encima ([floating]: barra inferior, menús).
  */
 @Composable
-fun GlassRoot(animated: Boolean = true, content: @Composable BoxScope.() -> Unit) {
-    val haze = remember { HazeState() }
+fun GlassRoot(
+    animated: Boolean = true,
+    floating: @Composable BoxScope.() -> Unit = {},
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val background = rememberLayerBackdrop()
+    val page = rememberLayerBackdrop()
     Box(Modifier.fillMaxSize()) {
-        LiquidBackground(Modifier.fillMaxSize().hazeSource(haze), animated)
-        CompositionLocalProvider(LocalHaze provides haze) {
-            Box(Modifier.fillMaxSize(), content = content)
+        Box(Modifier.fillMaxSize().layerBackdrop(page)) {
+            LiquidBackground(Modifier.fillMaxSize().layerBackdrop(background), animated)
+            CompositionLocalProvider(LocalBackdrop provides background) {
+                Box(Modifier.fillMaxSize(), content = content)
+            }
+        }
+        CompositionLocalProvider(LocalBackdrop provides page) {
+            Box(Modifier.fillMaxSize(), content = floating)
         }
     }
 }
@@ -136,12 +148,12 @@ fun LiquidBackground(modifier: Modifier = Modifier, animated: Boolean = true) {
         animationSpec = infiniteRepeatable(tween(60_000, easing = LinearEasing)),
         label = "phase",
     )
-    val alpha = if (p.dark) 0.55f else 0.75f
+    val alpha = if (p.dark) 0.34f else 0.6f
     Canvas(modifier) {
         drawRect(p.base)
         val w = size.width
         val h = size.height
-        val r = max(w, h) * 0.55f
+        val r = max(w, h) * 0.48f
         val t = if (animated) phase else 0.8f
         p.blobs.forEachIndexed { i, color ->
             val a = t * (1 + i * 0.25f) + i * 1.7f

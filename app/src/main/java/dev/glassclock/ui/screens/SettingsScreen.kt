@@ -54,6 +54,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
     val context = LocalContext.current
     val p = LocalGlass.current
     val s by Stores.settings.state.collectAsStateWithLifecycle()
+    val pickAlarmSound = rememberRingtonePicker { uri -> Stores.settings.update { it.copy(alarmRingtoneUri = uri) } }
     val pickTimerSound = rememberRingtonePicker { uri -> Stores.settings.update { it.copy(timerRingtoneUri = uri) } }
     var tick by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { tick++ }
@@ -77,15 +78,13 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
 
         SectionLabel("Alarmas")
         GlassCard {
+            SettingRow(
+                "Sonido de alarma",
+                subtitle = remember(s.alarmRingtoneUri) { ringtoneTitle(context, s.alarmRingtoneUri) },
+                onClick = { pickAlarmSound(s.alarmRingtoneUri) },
+            )
             SettingRow("Botones de volumen posponen", subtitle = "Mientras suena una alarma") {
                 GlassSwitch(s.volumeKeysSnooze, { v -> edit { it.copy(volumeKeysSnooze = v) } })
-            }
-            SettingRow(
-                "Tareas para apagar",
-                subtitle = if (s.dismissTasksEnabled) "Activadas en las alarmas que las tengan"
-                else "Desactivadas: todas las alarmas se apagan sin tarea",
-            ) {
-                GlassSwitch(s.dismissTasksEnabled, { v -> edit { it.copy(dismissTasksEnabled = v) } })
             }
             Text("Silenciar automáticamente tras", fontSize = 13.sp, color = p.contentSecondary, modifier = Modifier.padding(top = 8.dp))
             ChipRow(listOf(1, 5, 10, 15, 30), s.autoSilenceMinutes, { "$it min" }) { v ->
@@ -146,6 +145,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
         val missing = remember(tick) { missingPermissions(context) }
         val pm = context.getSystemService(PowerManager::class.java)
         val ignoringBattery = remember(tick) { pm.isIgnoringBatteryOptimizations(context.packageName) }
+        val canOverlay = remember(tick) { Settings.canDrawOverlays(context) }
         GlassCard {
             if (missing.isEmpty()) {
                 Text("Notificaciones, alarmas exactas y pantalla completa concedidos.", color = p.success, fontSize = 14.sp)
@@ -153,6 +153,16 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
             missing.forEach { (label, intent) ->
                 GlassButton(label, { context.startActivity(intent) }, Modifier.fillMaxWidth().padding(vertical = 4.dp))
             }
+            SettingRow(
+                "Mostrar sobre otras apps",
+                subtitle = if (canOverlay) "Activado: la alarma se abre aunque estés usando el móvil"
+                else "Opcional: abre la alarma a pantalla completa aunque estés usando el móvil",
+                onClick = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
+                    )
+                },
+            )
             SettingRow(
                 "Optimización de batería",
                 subtitle = if (ignoringBattery) "Sin restricciones" else "Restringida: el sistema podría retrasar la app",

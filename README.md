@@ -1,6 +1,6 @@
 # Glass Clock
 
-Reloj para Android libre y sin rastreo, con interfaz de estilo *liquid glass*: superficies de cristal translúcido que desenfocan un fondo de color en movimiento, brillos especulares y botones que se deforman como una gota al pulsarlos.
+Reloj para Android libre y sin rastreo, con interfaz de estilo *Liquid Glass* de Apple: superficies de cristal que refractan lo que tienen detrás como una lente (gracias a [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass)), con brillo en los bordes y botones que se deforman como una gota al pulsarlos.
 
 Inspirado en el reloj de Samsung, pensado para uso personal y publicado bajo GPL-3.0.
 
@@ -14,19 +14,16 @@ Inspirado en el reloj de Samsung, pensado para uso personal y publicado bajo GPL
 - **Mientras suena puedes elegir cuánto posponer**: chips rápidos (5/10/15/30) y ajuste fino con −/+ de 1 a 120 min.
 - Los botones de volumen posponen (desactivable).
 - Omitir solo la próxima ocurrencia de una alarma que se repite.
-- **Tareas para apagar** (por alarma, y con un interruptor global para desactivarlas todas):
-  - Cálculo (3 niveles de dificultad y de 1 a 5 problemas).
-  - Agitar el teléfono (10 a 50 sacudidas).
-  - Escribir una frase (no importan mayúsculas ni tildes).
-  - Mientras resuelves la tarea el volumen baja temporalmente.
 - Silencio automático tras N minutos (pospone si se puede).
 - Pantalla completa sobre la pantalla de bloqueo.
 
-**Reloj mundial**: reloj analógico de cristal, búsqueda de ciudades por zona horaria, diferencia horaria y día relativo. Desliza una ciudad para quitarla.
+**Reloj mundial**: reloj analógico de cristal, búsqueda de ciudades por zona horaria, diferencia horaria y día relativo. Mantén pulsada una ciudad para quitarla.
 
 **Cronómetro**: vueltas, con la más rápida y la más lenta resaltadas. Sigue contando aunque cierres la app.
 
 **Temporizador**: varios a la vez, preajustes guardables, pausa, +1 min y notificación con cuenta atrás.
+
+Mantén pulsada una alarma, un temporizador o una ciudad para ver sus opciones (editar, duplicar, omitir, eliminar...).
 
 **Modo sueño**: recordatorio para acostarte con el tiempo de sueño que tendrás hasta tu próxima alarma.
 
@@ -66,6 +63,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 | `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Reproducir el tono mientras suena. |
 | `RECEIVE_BOOT_COMPLETED` | Reprogramar alarmas tras reiniciar. |
 | `VIBRATE`, `WAKE_LOCK` | Vibrar y mantener el teléfono despierto mientras suena. |
+| `SYSTEM_ALERT_WINDOW` | Opcional, para abrir la alarma aunque estés usando el móvil. |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Opcional, para fabricantes que matan apps en segundo plano. |
 
 La app no pide acceso a internet.
@@ -76,7 +74,7 @@ La app no pide acceso a internet.
 app/src/main/java/dev/glassclock/
 ├── data/       Modelos y almacenamiento JSON
 ├── alarm/      Programación de alarmas, posponer, omitir, reinicio
-├── ring/       Servicio que suena, pantalla de alarma y tareas para apagar
+├── ring/       Servicio que suena y pantalla de alarma
 ├── timer/      Temporizadores
 ├── bedtime/    Modo sueño
 ├── ui/glass/   Componentes liquid glass (superficie, botones, rueda, barra...)

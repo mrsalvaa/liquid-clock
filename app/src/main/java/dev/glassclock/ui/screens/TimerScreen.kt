@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -52,7 +54,10 @@ import dev.glassclock.ui.glass.GlassCard
 import dev.glassclock.ui.glass.GlassChip
 import dev.glassclock.ui.glass.GlassIconButton
 import dev.glassclock.ui.glass.GlassTextField
+import dev.glassclock.ui.glass.LocalActionSheet
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.SheetAction
+import dev.glassclock.ui.glass.SheetSpec
 import dev.glassclock.ui.glass.ScreenTitle
 import dev.glassclock.ui.glass.WheelPicker
 import dev.glassclock.util.formatDurationShort
@@ -71,13 +76,23 @@ fun TimerScreen(contentPadding: PaddingValues) {
     var label by rememberSaveable { mutableStateOf("") }
     var savingPreset by remember { mutableStateOf(false) }
     val duration = (h * 3600L + m * 60L + s) * 1000L
+    val showSheet = LocalActionSheet.current
 
     LazyColumn(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
     ) {
-        item { ScreenTitle("Temporizador") }
+        item {
+            ScreenTitle("Temporizador") {
+                GlassIconButton(
+                    Icons.Rounded.BookmarkAdd,
+                    "Guardar preajuste",
+                    { savingPreset = true },
+                    enabled = duration > 0,
+                )
+            }
+        }
         item {
             GlassCard {
                 Row(
@@ -93,32 +108,40 @@ fun TimerScreen(contentPadding: PaddingValues) {
                 }
             }
         }
-        item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(presets, key = { it.id }) { preset ->
-                    GlassChip(
-                        "${preset.label} · ${formatDurationShort(preset.durationMs)}",
-                        selected = preset.durationMs == duration,
-                        onClick = {
-                            val total = preset.durationMs / 1000
-                            h = (total / 3600).toInt()
-                            m = ((total / 60) % 60).toInt()
-                            s = (total % 60).toInt()
-                            label = preset.label
-                        },
-                        onLongClick = { Timers.deletePreset(preset.id) },
-                    )
-                }
-                item {
-                    GlassChip("+ Guardar", selected = false, onClick = { if (duration > 0) savingPreset = true })
+        if (presets.isNotEmpty()) {
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(presets, key = { it.id }) { preset ->
+                        GlassChip(
+                            "${preset.label} · ${formatDurationShort(preset.durationMs)}",
+                            selected = preset.durationMs == duration,
+                            onClick = {
+                                val total = preset.durationMs / 1000
+                                h = (total / 3600).toInt()
+                                m = ((total / 60) % 60).toInt()
+                                s = (total % 60).toInt()
+                                label = preset.label
+                            },
+                            onLongClick = {
+                                showSheet(
+                                    SheetSpec(
+                                        preset.label,
+                                        subtitle = formatDurationShort(preset.durationMs),
+                                        actions = listOf(
+                                            SheetAction("Iniciar", Icons.Rounded.PlayArrow) {
+                                                Timers.start(context, preset.durationMs, preset.label)
+                                            },
+                                            SheetAction("Eliminar preajuste", Icons.Rounded.Delete, danger = true) {
+                                                Timers.deletePreset(preset.id)
+                                            },
+                                        ),
+                                    ),
+                                )
+                            },
+                        )
+                    }
                 }
             }
-            Text(
-                "Mantén pulsado un preajuste para borrarlo.",
-                Modifier.padding(start = 8.dp, top = 6.dp),
-                fontSize = 12.sp,
-                color = p.contentSecondary,
-            )
         }
         item {
             GlassTextField(
@@ -183,7 +206,30 @@ private fun TimerCard(timer: TimerItem, now: Long) {
     val p = LocalGlass.current
     val remaining = timer.remaining(now)
     val progress = if (timer.durationMs > 0) remaining.toFloat() / timer.durationMs else 0f
-    GlassCard {
+    val showSheet = LocalActionSheet.current
+    val title = timer.label.ifBlank { formatDurationShort(timer.durationMs) }
+    GlassCard(onLongClick = {
+        showSheet(
+            SheetSpec(
+                title,
+                subtitle = "Quedan ${formatTimer(timer.remaining(System.currentTimeMillis()))}",
+                actions = buildList {
+                    when (timer.state) {
+                        TimerState.RUNNING -> add(SheetAction("Pausar", Icons.Rounded.Pause) { Timers.pause(context, timer.id) })
+                        TimerState.PAUSED -> add(SheetAction("Reanudar", Icons.Rounded.PlayArrow) { Timers.resume(context, timer.id) })
+                        TimerState.RINGING -> Unit
+                    }
+                    add(SheetAction("Añadir 1 minuto", Icons.Rounded.Add) { Timers.addTime(context, timer.id, 60_000) })
+                    add(
+                        SheetAction("Guardar como preajuste", Icons.Rounded.BookmarkAdd) {
+                            Timers.savePreset(title, timer.durationMs)
+                        },
+                    )
+                    add(SheetAction("Eliminar", Icons.Rounded.Delete, danger = true) { Timers.remove(context, timer.id) })
+                },
+            ),
+        )
+    }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
@@ -201,7 +247,7 @@ private fun TimerCard(timer: TimerItem, now: Long) {
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    timer.label.ifBlank { formatDurationShort(timer.durationMs) },
+                    title,
                     fontSize = 13.sp,
                     color = p.contentSecondary,
                 )

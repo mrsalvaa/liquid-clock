@@ -51,13 +51,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.Shadow
 
 /**
- * Superficie de "cristal líquido": desenfoca el fondo, añade un tinte, un brillo especular
- * en la parte superior y un borde luminoso. Al pulsarla se deforma como una gota.
+ * Superficie de "cristal líquido" al estilo de Apple: refracta lo que tiene detrás como una lente
+ * (más en los bordes, con algo de aberración cromática), apenas lo desenfoca, realza los colores
+ * y añade un brillo en el borde y una sombra suave. Al pulsarla se deforma como una gota.
+ *
+ * [frost] controla cuánto se esmerila: poco para controles ("clear"), más para tarjetas con texto.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -66,58 +74,49 @@ fun GlassSurface(
     shape: Shape = RoundedCornerShape(28.dp),
     strong: Boolean = false,
     tint: Color? = null,
-    blur: Dp = 28.dp,
+    frost: Dp = 6.dp,
+    refraction: Boolean = true,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val p = LocalGlass.current
-    val haze = LocalHaze.current
+    val backdrop = LocalBackdrop.current
+    val haptics = LocalHapticFeedback.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val squish = spring<Float>(dampingRatio = 0.42f, stiffness = 520f)
-    val sx by animateFloatAsState(if (pressed) 1.03f else 1f, squish, label = "sx")
-    val sy by animateFloatAsState(if (pressed) 0.96f else 1f, squish, label = "sy")
+    val sx by animateFloatAsState(if (pressed) 1.04f else 1f, squish, label = "sx")
+    val sy by animateFloatAsState(if (pressed) 0.95f else 1f, squish, label = "sy")
+    val surface = tint ?: if (strong) p.tintStrong else p.tint
     val clickable = onClick != null || onLongClick != null
 
     Box(
         modifier
-            .graphicsLayer {
-                scaleX = sx
-                scaleY = sy
-            }
-            .clip(shape)
-            .hazeEffect(
-                haze,
-                HazeStyle(
-                    backgroundColor = p.base,
-                    tints = listOf(HazeTint(tint ?: if (strong) p.tintStrong else p.tint)),
-                    blurRadius = blur,
-                    noiseFactor = 0.04f,
-                ),
-            )
-            .drawBehind {
-                // Brillo especular superior y reflejo tenue inferior.
-                drawRect(
-                    Brush.verticalGradient(
-                        0f to Color.White.copy(alpha = p.highlight),
-                        0.45f to Color.Transparent,
-                        0.85f to Color.Transparent,
-                        1f to Color.White.copy(alpha = p.highlight * 0.35f),
-                    ),
-                )
-            }
-            .border(
-                BorderStroke(
-                    1.dp,
-                    Brush.linearGradient(
-                        0f to Color.White.copy(alpha = p.rim),
-                        0.45f to Color.White.copy(alpha = p.rim * 0.12f),
-                        0.75f to Color.White.copy(alpha = p.rim * 0.08f),
-                        1f to Color.White.copy(alpha = p.rim * 0.5f),
-                    ),
-                ),
-                shape,
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { shape },
+                effects = {
+                    vibrancy()
+                    blur(frost.toPx())
+                    if (refraction) {
+                        val side = size.minDimension
+                        lens(
+                            refractionHeight = minOf(side * 0.3f, 22.dp.toPx()),
+                            refractionAmount = minOf(side * 0.55f, 40.dp.toPx()),
+                            chromaticAberration = true,
+                        )
+                    }
+                },
+                highlight = { Highlight.Default.copy(alpha = if (p.dark) 0.75f else 1f) },
+                shadow = {
+                    Shadow(radius = 20.dp, color = Color.Black.copy(alpha = if (p.dark) 0.4f else 0.1f))
+                },
+                layerBlock = {
+                    scaleX = sx
+                    scaleY = sy
+                },
+                onDrawSurface = { drawRect(surface) },
             )
             .then(
                 if (clickable) {
@@ -125,14 +124,27 @@ fun GlassSurface(
                         interactionSource = interaction,
                         indication = null,
                         onClick = onClick ?: {},
-                        onLongClick = onLongClick,
+                        onLongClick = onLongClick?.let {
+                            {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                it()
+                            }
+                        },
                     )
                 } else {
                     Modifier
                 },
             ),
-        content = content,
-    )
+        propagateMinConstraints = true,
+    ) {
+        Box(
+            Modifier.graphicsLayer {
+                scaleX = sx
+                scaleY = sy
+            },
+            content = content,
+        )
+    }
 }
 
 /** Tarjeta de cristal con relleno y columna. */
@@ -143,7 +155,7 @@ fun GlassCard(
     onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    GlassSurface(modifier.fillMaxWidth(), onClick = onClick, onLongClick = onLongClick) {
+    GlassSurface(modifier.fillMaxWidth(), frost = 14.dp, onClick = onClick, onLongClick = onLongClick) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), content = content)
     }
 }
@@ -226,8 +238,8 @@ fun GlassChip(
     GlassSurface(
         modifier.height(40.dp),
         shape = shape,
-        tint = if (selected) p.accent.copy(alpha = 0.55f) else null,
-        blur = 20.dp,
+        tint = if (selected) p.accent.copy(alpha = 0.5f) else null,
+        frost = 4.dp,
         onClick = onClick,
         onLongClick = onLongClick,
     ) {
@@ -292,7 +304,7 @@ fun GlassTextField(
 ) {
     val p = LocalGlass.current
     val style = textStyle ?: TextStyle(fontSize = 17.sp)
-    GlassSurface(modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), blur = 20.dp) {
+    GlassSurface(modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), frost = 12.dp, refraction = false) {
         Box(Modifier.padding(horizontal = 18.dp, vertical = 15.dp)) {
             if (value.isEmpty()) {
                 Text(placeholder, style = style, color = p.contentSecondary)

@@ -59,6 +59,11 @@ object Alarms {
         cancelSnoozeNotification(context, id)
     }
 
+    fun duplicate(context: Context, id: Int) {
+        val alarm = get(id) ?: return
+        save(context, alarm.copy(id = newId(), skippedOccurrence = null, snoozedUntil = null, snoozeCount = 0))
+    }
+
     fun setEnabled(context: Context, id: Int, enabled: Boolean) {
         val alarm = get(id) ?: return
         save(context, alarm.copy(enabled = enabled, skippedOccurrence = null, snoozedUntil = null, snoozeCount = 0))

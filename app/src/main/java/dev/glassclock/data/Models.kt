@@ -3,9 +3,6 @@ package dev.glassclock.data
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class DismissTask { NONE, MATH, SHAKE, TYPE }
-
-@Serializable
 data class Alarm(
     val id: Int,
     val hour: Int,
@@ -14,7 +11,7 @@ data class Alarm(
     val days: Set<Int> = emptySet(),
     val label: String = "",
     val enabled: Boolean = true,
-    /** null = tono de alarma predeterminado, "" = silencio. */
+    /** null = sonido de alarma de Ajustes, "" = silencio. */
     val ringtoneUri: String? = null,
     val vibrate: Boolean = true,
     val crescendo: Boolean = true,
@@ -23,11 +20,6 @@ data class Alarm(
     val snoozeMinutes: Int = 5,
     /** 0 = ilimitado. */
     val snoozeMaxCount: Int = 3,
-    val task: DismissTask = DismissTask.NONE,
-    /** 0 fácil, 1 media, 2 difícil (solo cálculo). */
-    val taskDifficulty: Int = 1,
-    /** Problemas, sacudidas o frases según la tarea. */
-    val taskAmount: Int = 3,
     /** Instante (epoch ms) de la ocurrencia que se omitirá. */
     val skippedOccurrence: Long? = null,
     val snoozedUntil: Long? = null,
@@ -75,8 +67,9 @@ data class StopwatchData(
 data class AppSettings(
     val volumeKeysSnooze: Boolean = true,
     val autoSilenceMinutes: Int = 10,
-    val dismissTasksEnabled: Boolean = true,
     val animatedBackground: Boolean = true,
+    /** Sonido de las alarmas que usan el predeterminado. null = el del sistema. */
+    val alarmRingtoneUri: String? = null,
     val timerRingtoneUri: String? = null,
     val bedtimeEnabled: Boolean = false,
     val bedtimeHour: Int = 23,

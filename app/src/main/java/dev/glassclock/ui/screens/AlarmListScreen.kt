@@ -22,6 +22,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AlarmOff
+import androidx.compose.material.icons.rounded.AlarmOn
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,16 +46,19 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.glassclock.alarm.Alarms
+import dev.glassclock.alarm.isRepeating
 import dev.glassclock.alarm.nextOccurrence
 import dev.glassclock.alarm.nextTrigger
 import dev.glassclock.data.Alarm
-import dev.glassclock.data.DismissTask
 import dev.glassclock.data.Stores
 import dev.glassclock.ui.glass.GlassButton
 import dev.glassclock.ui.glass.GlassCard
 import dev.glassclock.ui.glass.GlassIconButton
 import dev.glassclock.ui.glass.GlassSwitch
+import dev.glassclock.ui.glass.LocalActionSheet
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.SheetAction
+import dev.glassclock.ui.glass.SheetSpec
 import dev.glassclock.ui.glass.ScreenTitle
 import dev.glassclock.util.formatClock
 import dev.glassclock.util.formatDays
@@ -72,6 +81,7 @@ fun AlarmListScreen(
     val is24 = is24h(context)
     val sorted = remember(alarms) { alarms.sortedBy { it.hour * 60 + it.minute } }
     val next = alarms.mapNotNull { it.nextTrigger(now) }.minOrNull()
+    val showSheet = LocalActionSheet.current
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
@@ -110,6 +120,7 @@ fun AlarmListScreen(
                     now = now,
                     is24 = is24,
                     onClick = { onEdit(alarm.id) },
+                    onLongClick = { showSheet(alarmMenu(context, alarm, now, is24) { onEdit(alarm.id) }) },
                     onToggle = { Alarms.setEnabled(context, alarm.id, it) },
                 )
             }
@@ -123,13 +134,14 @@ private fun AlarmCard(
     now: Long,
     is24: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
 ) {
     val p = LocalGlass.current
     val dim = if (alarm.enabled) 1f else 0.45f
     val (time, suffix) = formatClock(alarm.hour, alarm.minute, is24)
     val status = alarmStatus(alarm, now, is24)
-    GlassCard(onClick = onClick) {
+    GlassCard(onClick = onClick, onLongClick = onLongClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 if (alarm.label.isNotBlank()) {
@@ -163,21 +175,37 @@ private fun AlarmCard(
     }
 }
 
+private fun alarmMenu(context: Context, alarm: Alarm, now: Long, is24: Boolean, onEdit: () -> Unit): SheetSpec {
+    val (time, suffix) = formatClock(alarm.hour, alarm.minute, is24)
+    val skipped = alarm.skippedOccurrence?.let { it > now } == true
+    return SheetSpec(
+        title = listOfNotNull(time, suffix).joinToString(" ") +
+            if (alarm.label.isNotBlank()) " · ${alarm.label}" else "",
+        subtitle = formatDays(alarm.days) ?: "Una sola vez",
+        actions = buildList {
+            add(SheetAction("Editar", Icons.Rounded.Edit, onClick = onEdit))
+            add(
+                SheetAction(
+                    if (alarm.enabled) "Desactivar" else "Activar",
+                    if (alarm.enabled) Icons.Rounded.AlarmOff else Icons.Rounded.AlarmOn,
+                ) { Alarms.setEnabled(context, alarm.id, !alarm.enabled) },
+            )
+            if (alarm.enabled && alarm.isRepeating) {
+                add(
+                    SheetAction(
+                        if (skipped) "Restaurar la próxima" else "Omitir la próxima",
+                        Icons.Rounded.SkipNext,
+                    ) { if (skipped) Alarms.unskip(context, alarm.id) else Alarms.skipNext(context, alarm.id) },
+                )
+            }
+            add(SheetAction("Duplicar", Icons.Rounded.ContentCopy) { Alarms.duplicate(context, alarm.id) })
+            add(SheetAction("Eliminar", Icons.Rounded.Delete, danger = true) { Alarms.delete(context, alarm.id) })
+        },
+    )
+}
+
 /** Texto bajo la hora y si debe resaltarse. */
 private fun alarmStatus(alarm: Alarm, now: Long, is24: Boolean): Pair<String, Boolean> {
-    val extras = buildList {
-        if (alarm.task != DismissTask.NONE) {
-            add(
-                when (alarm.task) {
-                    DismissTask.MATH -> "cálculo"
-                    DismissTask.SHAKE -> "agitar"
-                    DismissTask.TYPE -> "escribir"
-                    DismissTask.NONE -> ""
-                },
-            )
-        }
-    }
-    val suffix = if (extras.isEmpty()) "" else " · " + extras.joinToString(", ")
     if (alarm.enabled) {
         alarm.snoozedUntil?.takeIf { it > now }?.let {
             return "Pospuesta hasta las ${formatInstantClock(it, is24)}" to true
@@ -189,8 +217,8 @@ private fun alarmStatus(alarm: Alarm, now: Long, is24: Boolean): Pair<String, Bo
         }
     }
     val days = formatDays(alarm.days)
-    if (days != null) return days + suffix to false
-    return relativeDay(alarm.nextOccurrence(now)) + suffix to false
+    if (days != null) return days to false
+    return relativeDay(alarm.nextOccurrence(now)) to false
 }
 
 /** Avisos si falta algún permiso imprescindible para que las alarmas suenen. */
