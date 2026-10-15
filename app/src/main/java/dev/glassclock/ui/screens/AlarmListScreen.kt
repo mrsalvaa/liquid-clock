@@ -142,10 +142,12 @@ fun AlarmListScreen(
             item {
                 ScreenTitle(
                     "Alarmas",
+                    // "Próxima alarma en 8 hs 54 min ·" y debajo "hoy a las 23:30 hs".
                     subtitle = next?.let {
-                        "Próxima en ${formatUntil(it - now)} · " +
-                            relativeDay(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())).lowercase() +
-                            " a las ${formatInstantClock(it, is24)}"
+                        val until = formatUntil(it - now).replace(Regex("""(\d+) h\b"""), "$1 hs")
+                        val day = relativeDay(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())).lowercase()
+                        "Próxima alarma en $until ·\n$day a las ${formatInstantClock(it, is24)}" +
+                            if (is24) " hs" else ""
                     } ?: "Ninguna alarma activa",
                 ) {
                     GlassIconButton(Icons.Rounded.Settings, "Ajustes", onSettings)

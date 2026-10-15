@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 import androidx.compose.animation.core.animate
@@ -37,6 +39,9 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
@@ -266,11 +271,28 @@ private fun SwipeTabs(
     content: @Composable (Int) -> Unit,
 ) {
     var width by remember { mutableIntStateOf(1) }
+    // Pestaña mostrada: se adelanta al estado del padre para que un deslizamiento nuevo, lanzado
+    // mientras termina la animación del anterior, ya parta de la pestaña correcta.
+    var shown by remember { mutableIntStateOf(tab) }
     // Desplazamiento del arrastre en px: negativo = hacia la pestaña siguiente.
     var dragX by remember { mutableFloatStateOf(0f) }
-    var settling by remember { mutableStateOf(false) }
-    val currentTab by rememberUpdatedState(tab)
-    fun report() = onDrag(if (dragX == 0f) null else currentTab - dragX / width)
+    val scope = rememberCoroutineScope()
+    var settle by remember { mutableStateOf<Job?>(null) }
+    fun report() = onDrag(if (dragX == 0f) null else shown - dragX / width)
+    fun commit(newTab: Int) {
+        shown = newTab
+        onTab(newTab)
+    }
+
+    // Cambio desde fuera (tocar la barra): se corta cualquier animación y se muestra sin más.
+    LaunchedEffect(tab) {
+        if (tab != shown) {
+            settle?.cancel()
+            dragX = 0f
+            shown = tab
+            onDrag(null)
+        }
+    }
 
     Box(
         Modifier
@@ -278,34 +300,48 @@ private fun SwipeTabs(
             .onSizeChanged { width = it.width.coerceAtLeast(1) }
             .draggable(
                 orientation = Orientation.Horizontal,
-                enabled = !settling,
                 state = rememberDraggableState { delta ->
-                    val min = if (currentTab == TAB_WORLD) 0f else -width.toFloat()
-                    val max = if (currentTab == TAB_ALARM) 0f else width.toFloat()
+                    val min = if (shown == TAB_WORLD) 0f else -width.toFloat()
+                    val max = if (shown == TAB_ALARM) 0f else width.toFloat()
                     dragX = (dragX + delta).coerceIn(min, max)
                     report()
+                },
+                onDragStarted = {
+                    // Un deslizamiento nuevo interrumpe la animación del anterior. Si ya había pasado
+                    // de la mitad, la pestaña vecina pasa a ser la actual sin mover nada en pantalla.
+                    settle?.cancel()
+                    settle = null
+                    if (dragX < -width / 2f && shown < TAB_WORLD) {
+                        dragX += width
+                        commit(shown + 1)
+                    } else if (dragX > width / 2f && shown > TAB_ALARM) {
+                        dragX -= width
+                        commit(shown - 1)
+                    }
                 },
                 onDragStopped = { velocity ->
                     val fast = 1200f
                     val target = when {
-                        currentTab < TAB_WORLD && (dragX < -width * 0.3f || velocity < -fast && dragX < 0f) -> -width.toFloat()
-                        currentTab > TAB_ALARM && (dragX > width * 0.3f || velocity > fast && dragX > 0f) -> width.toFloat()
+                        shown < TAB_WORLD && (dragX < -width * 0.3f || velocity < -fast && dragX < 0f) -> -width.toFloat()
+                        shown > TAB_ALARM && (dragX > width * 0.3f || velocity > fast && dragX > 0f) -> width.toFloat()
                         else -> 0f
                     }
-                    settling = true
-                    animate(dragX, target, velocity, spring(dampingRatio = 1f, stiffness = 500f)) { v, _ ->
-                        dragX = v
-                        report()
+                    settle = scope.launch {
+                        animate(dragX, target, velocity, spring(dampingRatio = 1f, stiffness = 500f)) { v, _ ->
+                            dragX = v
+                            report()
+                        }
+                        if (target != 0f) commit(shown + if (target < 0f) 1 else -1)
+                        dragX = 0f
+                        onDrag(null)
                     }
-                    if (target != 0f) onTab(currentTab + if (target < 0f) 1 else -1)
-                    dragX = 0f
-                    onDrag(null)
-                    settling = false
                 },
             ),
     ) {
         for (t in TAB_ALARM..TAB_WORLD) {
-            val active = t == tab
+            val active = t == shown
+            // Se ve si es la actual o la vecina que entra mientras se desliza.
+            val visible = { active || (t == shown + 1 && dragX < 0f) || (t == shown - 1 && dragX > 0f) }
             Box(
                 Modifier
                     .fillMaxSize()
@@ -314,32 +350,31 @@ private fun SwipeTabs(
                     .offset {
                         val x = when {
                             active -> dragX
-                            t == tab + 1 && dragX < 0f -> dragX + width
-                            t == tab - 1 && dragX > 0f -> dragX - width
-                            else -> 0f
+                            t == shown + 1 && dragX < 0f -> dragX + width
+                            t == shown - 1 && dragX > 0f -> dragX - width
+                            // Las ocultas, fuera de la pantalla: así ningún toque cae sobre ellas
+                            // (p. ej. mientras la actual sale de lado al encadenar deslizamientos).
+                            else -> 4f * width
                         }
                         IntOffset(x.roundToInt(), 0)
                     }
                     // Sin llamar a drawContent: ni se graban sus capas ni se calcula su cristal.
-                    .drawWithContent {
-                        val neighbour = (t == tab + 1 && dragX < 0f) || (t == tab - 1 && dragX > 0f)
-                        if (active || neighbour) drawContent()
-                    }
-                    .then(
-                        if (active) {
-                            Modifier
-                        } else {
-                            Modifier
-                                .clearAndSetSemantics { }
-                                .pointerInput(Unit) {
-                                    awaitPointerEventScope {
-                                        while (true) {
-                                            awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                                        }
-                                    }
-                                }
-                        },
-                    ),
+                    .drawWithContent { if (visible()) drawContent() }
+                    .then(if (active) Modifier else Modifier.clearAndSetSemantics { })
+                    // Las pestañas ocultas se tragan los toques para que no lleguen a sus botones
+                    // invisibles. Se decide al tocar: la vecina que está entrando sí los recibe, así
+                    // se pueden encadenar deslizamientos rápidos sin esperar a que termine el anterior.
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            if (visible()) return@awaitEachGesture
+                            down.consume()
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                event.changes.forEach { it.consume() }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    },
             ) {
                 CompositionLocalProvider(LocalTabActive provides active) { content(t) }
             }

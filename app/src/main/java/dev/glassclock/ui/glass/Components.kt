@@ -397,17 +397,15 @@ fun ScreenTitle(
     actions: @Composable () -> Unit = {},
 ) {
     val p = LocalGlass.current
-    Row(
-        modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-            if (subtitle != null) {
-                Text(subtitle, fontSize = 15.sp, color = p.contentSecondary)
-            }
+    Column(modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f), fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { actions() }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { actions() }
+        // Debajo y a todo el ancho, para que no lo partan los botones.
+        if (subtitle != null) {
+            Text(subtitle, Modifier.padding(top = 2.dp), fontSize = 15.sp, color = p.contentSecondary)
+        }
     }
 }
 
