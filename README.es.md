@@ -8,6 +8,13 @@ Reloj para Android libre y sin rastreo, con interfaz de estilo *Liquid Glass* de
 
 Inspirado en el reloj de Samsung, pensado para uso personal y publicado bajo GPL-3.0.
 
+<p align="center">
+  <img src="docs/screenshots/alarms.jpg" width="200" alt="Alarmas">
+  <img src="docs/screenshots/stopwatch.jpg" width="200" alt="Cronómetro">
+  <img src="docs/screenshots/timer.jpg" width="200" alt="Temporizador">
+  <img src="docs/screenshots/world-clock.jpg" width="200" alt="Reloj mundial">
+</p>
+
 ## Funciones
 
 **Alarmas**
@@ -34,9 +41,20 @@ Mantén pulsada una alarma, un temporizador o una ciudad para ver sus opciones (
 
 Desliza a izquierda o derecha para cambiar de pestaña. Toca el número de cualquier rueda para escribirlo con el teclado.
 
-**Apariencia**: tema del sistema, claro u oscuro; fondo de colores en movimiento o un color de énfasis (10 colores con 3 tonos cada uno); e iconos alternativos de la app al estilo Material, Samsung, iPhone y Motorola.
-
 **Modo sueño**: recordatorio para acostarte con el tiempo de sueño que tendrás hasta tu próxima alarma.
+
+## Personalización
+
+Todo está en **Ajustes → Apariencia** y **Ajustes → Alarmas**:
+
+- **Tema**: según el sistema, siempre claro o siempre oscuro.
+- **Fondo**:
+  - *En movimiento*: cuatro combinaciones de colores (Celeste y rosa, Aurora, Atardecer, Océano) que se mueven despacio detrás del cristal. La animación se puede desactivar para ahorrar batería.
+  - *Color de énfasis*: fondo oscuro con un brillo suave de un solo color. Hay 10 colores (rojo, naranja, amarillo, verde, menta, celeste, azul, violeta, rosa y gris), cada uno en tono claro, medio u oscuro. Los botones, interruptores y resaltados usan ese color.
+- **Icono de la app**: Liquid (el predeterminado) o al estilo Material, Samsung, iPhone y Motorola.
+- **Sonidos**: un sonido de alarma predeterminado, otro para el temporizador y, si quieres, uno distinto para cada alarma.
+- **Por alarma**: vibración, volumen creciente y su duración, intervalo para posponer y cuántas veces se puede posponer.
+- **Comportamiento**: posponer con los botones de volumen, tiempo hasta silenciar sola y el aviso 2 horas antes de cada alarma.
 
 ## Descargar
 

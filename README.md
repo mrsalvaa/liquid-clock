@@ -10,6 +10,13 @@ Inspired by Samsung's clock app, built for personal use and released under GPL-3
 
 > The in-app interface is currently in Spanish only.
 
+<p align="center">
+  <img src="docs/screenshots/alarms.jpg" width="200" alt="Alarms">
+  <img src="docs/screenshots/stopwatch.jpg" width="200" alt="Stopwatch">
+  <img src="docs/screenshots/timer.jpg" width="200" alt="Timer">
+  <img src="docs/screenshots/world-clock.jpg" width="200" alt="World clock">
+</p>
+
 ## Features
 
 **Alarms**
@@ -36,9 +43,20 @@ Long-press an alarm, timer or city to see its options (edit, duplicate, skip, de
 
 Swipe left or right to change tabs. Tap the number in any wheel to type it with the keyboard.
 
-**Appearance**: system, light or dark theme; moving colour backgrounds or a single accent colour (10 colours, 3 tones each); and alternative app icons in Material, Samsung, iPhone and Motorola styles.
-
 **Bedtime**: a reminder to go to bed, showing how much sleep you'll get before your next alarm.
+
+## Customization
+
+Everything is in **Settings → Appearance** and **Settings → Alarms**:
+
+- **Theme**: follow the system, or always light or always dark.
+- **Background**:
+  - *Moving colours*: four colour sets (Sky & pink, Aurora, Sunset, Ocean) that drift slowly behind the glass. The animation can be turned off to save battery.
+  - *Accent colour*: a dark background with a soft glow of one colour. Pick from 10 colours (red, orange, yellow, green, mint, sky blue, blue, violet, pink, grey), each in a light, medium or dark tone. Buttons, switches and highlights use that colour.
+- **App icon**: Liquid (default), or Material, Samsung, iPhone and Motorola styles.
+- **Sounds**: a default alarm sound, a timer sound, and a different sound per alarm if you want.
+- **Per alarm**: vibration, gradually increasing volume and its duration, snooze interval and how many times you can snooze.
+- **Behaviour**: volume buttons snooze, auto-silence time, and the notification 2 hours before each alarm.
 
 ## Download
 
