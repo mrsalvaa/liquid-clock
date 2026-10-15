@@ -2,6 +2,16 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 0.2.3
+
+### Mejoras
+- Colores de énfasis más apagados: los mismos tonos, menos saturados, y un brillo más suave en el fondo.
+- Los iconos, textos y líneas en color de énfasis se ajustan para leerse bien. Un tono oscuro en tema oscuro, o uno claro en tema claro, ya no se pierde en el fondo.
+- Los títulos de cada pantalla tienen un pequeño margen arriba para no quedar pegados a la barra de estado.
+
+### Cambios
+- La cabecera de alarmas vuelve a como estaba: "Próxima en 8 h 54 min · hoy a las 23:30" al lado de los botones.
+
 ## 0.2.1
 
 ### Novedades

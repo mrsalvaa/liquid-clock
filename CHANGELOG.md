@@ -2,6 +2,16 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## 0.2.3
+
+### Improved
+- Accent colours are toned down: the same hues, less saturated, and a softer glow in the background.
+- Icons, text and lines in the accent colour are adjusted so they stay readable. A dark tone on the dark theme, or a light tone on the light theme, no longer blends into the background.
+- Screen titles have a small top margin so they don't sit right under the status bar.
+
+### Changed
+- The alarms header is back to its previous layout: "Próxima en 8 h 54 min · hoy a las 23:30" next to the buttons.
+
 ## 0.2.1
 
 ### New
