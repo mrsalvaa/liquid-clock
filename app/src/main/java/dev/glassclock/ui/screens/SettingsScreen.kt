@@ -182,6 +182,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
                             set.name,
                             Modifier.padding(top = 6.dp),
                             fontSize = 12.sp,
+                            lineHeight = 14.sp,
                             textAlign = TextAlign.Center,
                             color = if (selected) p.content else p.contentSecondary,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,

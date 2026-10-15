@@ -32,7 +32,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -115,8 +115,7 @@ fun StopwatchScreen(contentPadding: PaddingValues) {
                             formatStopwatch(elapsed),
                             fontSize = if (elapsed >= 3_600_000) 40.sp else 50.sp,
                             fontWeight = FontWeight.Light,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = (-2).sp,
+                            style = TextStyle(fontFeatureSettings = "tnum"),
                         )
                         if (data.laps.isNotEmpty()) {
                             Text(
@@ -165,13 +164,13 @@ fun StopwatchScreen(contentPadding: PaddingValues) {
                                 formatStopwatch(lap),
                                 Modifier.weight(1f),
                                 color = color,
-                                fontFamily = FontFamily.Monospace,
+                                style = TextStyle(fontFeatureSettings = "tnum"),
                                 fontSize = 15.sp,
                             )
                             Text(
                                 formatStopwatch(data.laps[i]),
                                 color = p.contentSecondary,
-                                fontFamily = FontFamily.Monospace,
+                                style = TextStyle(fontFeatureSettings = "tnum"),
                                 fontSize = 15.sp,
                             )
                         }

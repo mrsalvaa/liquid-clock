@@ -9,7 +9,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -177,6 +182,14 @@ fun GlassRoot(
                 Box(Modifier.fillMaxSize(), content = content)
             }
         }
+        // Degradado bajo la barra de estado para que el contenido no se mezcle con la hora.
+        val p = LocalGlass.current
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsTopHeight(WindowInsets.statusBars)
+                .background(Brush.verticalGradient(listOf(p.base, p.base.copy(alpha = 0.6f)))),
+        )
         CompositionLocalProvider(LocalBackdrop provides page) {
             Box(Modifier.fillMaxSize(), content = floating)
         }
