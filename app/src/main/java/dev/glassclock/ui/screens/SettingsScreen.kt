@@ -56,6 +56,7 @@ import dev.glassclock.ui.glass.GlassCard
 import dev.glassclock.ui.glass.GlassIconButton
 import dev.glassclock.ui.glass.GlassSwitch
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.TitleTopPadding
 import dev.glassclock.ui.glass.SectionLabel
 import dev.glassclock.ui.glass.SettingRow
 import dev.glassclock.ui.glass.WheelColon
@@ -87,7 +88,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
             .padding(contentPadding)
             .padding(horizontal = 16.dp),
     ) {
-        Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = TitleTopPadding, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Volver", onClose)
             Text("Ajustes", Modifier.padding(start = 12.dp), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         }

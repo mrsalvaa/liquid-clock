@@ -41,6 +41,7 @@ import dev.glassclock.ui.glass.GlassSurface
 import dev.glassclock.ui.glass.GlassTextField
 import dev.glassclock.ui.glass.LocalActionSheet
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.TitleTopPadding
 import dev.glassclock.ui.glass.SheetAction
 import dev.glassclock.ui.glass.SheetSpec
 import dev.glassclock.ui.glass.ScreenTitle
@@ -187,7 +188,7 @@ fun AddCityScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
         if (q.isEmpty()) all else all.filter { normalize(it.replace('_', ' ')).contains(q) }
     }
     Column(Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 16.dp)) {
-        Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = TitleTopPadding, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, "Volver", onClose)
             Text("Añadir ciudad", Modifier.padding(start = 12.dp), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         }

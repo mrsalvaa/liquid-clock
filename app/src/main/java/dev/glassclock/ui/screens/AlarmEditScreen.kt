@@ -47,6 +47,7 @@ import dev.glassclock.ui.glass.GlassIconButton
 import dev.glassclock.ui.glass.GlassSwitch
 import dev.glassclock.ui.glass.GlassTextField
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.TitleTopPadding
 import dev.glassclock.ui.glass.LocalPrompt
 import dev.glassclock.ui.glass.PromptSpec
 import dev.glassclock.ui.glass.SectionLabel
@@ -87,7 +88,7 @@ fun AlarmEditScreen(alarmId: Int?, groupId: Int?, contentPadding: PaddingValues,
             .padding(contentPadding)
             .padding(horizontal = 16.dp),
     ) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(top = TitleTopPadding, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassIconButton(Icons.Rounded.Close, "Cancelar", onClose)
             Text(
                 if (existing == null) "Nueva alarma" else "Editar alarma",
