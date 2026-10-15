@@ -162,8 +162,8 @@ fun AnalogClock(now: Long, modifier: Modifier = Modifier) {
             }
             drawLine(p.content, c, point(hours / 12f, r * 0.5f), 6.dp.toPx(), StrokeCap.Round)
             drawLine(p.content, c, point(minutes / 60f, r * 0.74f), 4.dp.toPx(), StrokeCap.Round)
-            drawLine(p.accent, point(seconds / 60f, -r * 0.12f), point(seconds / 60f, r * 0.82f), 2.dp.toPx(), StrokeCap.Round)
-            drawCircle(p.accent, 5.dp.toPx(), c)
+            drawLine(p.accentFg, point(seconds / 60f, -r * 0.12f), point(seconds / 60f, r * 0.82f), 2.dp.toPx(), StrokeCap.Round)
+            drawCircle(p.accentFg, 5.dp.toPx(), c)
         }
     }
 }

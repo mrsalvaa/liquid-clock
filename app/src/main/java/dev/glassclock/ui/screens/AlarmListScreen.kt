@@ -230,7 +230,7 @@ private fun AlarmCard(
                 Text(
                     status.first,
                     fontSize = 13.sp,
-                    color = if (status.second) p.accent else p.contentSecondary.copy(alpha = dim),
+                    color = if (status.second) p.accentFg else p.contentSecondary.copy(alpha = dim),
                 )
             }
             GlassSwitch(alarm.enabled && !alarm.isPaused(now), onToggle)

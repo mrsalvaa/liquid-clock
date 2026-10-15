@@ -104,7 +104,7 @@ fun StopwatchScreen(contentPadding: PaddingValues) {
                             topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke),
                         )
                         drawArc(
-                            color = p.accent,
+                            color = p.accentFg,
                             startAngle = -90f,
                             sweepAngle = (elapsed % 60_000) / 60_000f * 360f,
                             useCenter = false,

@@ -234,8 +234,8 @@ private fun WheelInput(initial: String, maxDigits: Int, fontSize: Int, modifier:
                 text = TextFieldValue(digits, TextRange(digits.length))
             },
             singleLine = true,
-            textStyle = TextStyle(fontSize = fontSize.sp, color = p.accent, textAlign = TextAlign.Center),
-            cursorBrush = SolidColor(p.accent),
+            textStyle = TextStyle(fontSize = fontSize.sp, color = p.accentFg, textAlign = TextAlign.Center),
+            cursorBrush = SolidColor(p.accentFg),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { done() }),
             modifier = Modifier
@@ -322,7 +322,7 @@ fun GlassNavBar(
                     ) {
                         Icon(
                             item.icon, null, Modifier.size(24.dp),
-                            tint = if (active) p.accent else p.contentSecondary,
+                            tint = if (active) p.accentFg else p.contentSecondary,
                         )
                         Text(
                             item.label,

@@ -40,6 +40,7 @@ import dev.glassclock.ui.glass.COLOR_SETS
 import dev.glassclock.ui.glass.GlassCard
 import dev.glassclock.ui.glass.GlassSwitch
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.muted
 import dev.glassclock.ui.glass.SettingRow
 import dev.glassclock.util.AppIcons
 
@@ -86,7 +87,7 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
                     hues.forEachIndexed { col, hue ->
                         val i = row * 5 + col
                         Swatch(
-                            brush = Brush.linearGradient(listOf(hue.tones[0], hue.tones[2])),
+                            brush = Brush.linearGradient(listOf(muted(hue.tones[0]), muted(hue.tones[2]))),
                             selected = i == hueIndex,
                             label = hue.name,
                             modifier = Modifier.weight(1f),
@@ -105,7 +106,7 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
             ) {
                 ACCENT_HUES[hueIndex].tones.forEachIndexed { t, tone ->
                     Swatch(
-                        brush = Brush.linearGradient(listOf(tone, tone)),
+                        brush = Brush.linearGradient(listOf(muted(tone), muted(tone))),
                         selected = tone.argb() == s.accentColor,
                         label = listOf("Claro", "Medio", "Oscuro")[t],
                         modifier = Modifier.width(62.dp),

@@ -34,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import dev.glassclock.data.AppSettings
 import com.kyant.backdrop.Backdrop
@@ -61,6 +62,8 @@ data class GlassPalette(
     val blobs: List<Color>,
     /** Modo color de énfasis: el fondo es un brillo quieto del acento en vez de manchas. */
     val accentGlow: Boolean = false,
+    /** Acento para iconos, textos y líneas: ajustado para que se lea sobre el fondo. */
+    val accentFg: Color = Color.Unspecified,
 )
 
 val DarkGlass = GlassPalette(
@@ -151,6 +154,26 @@ val ACCENT_HUES = listOf(
     AccentHue("Gris", listOf(Color(0xFFE5E7EB), Color(0xFF9CA3AF), Color(0xFF4B5563))),
 )
 
+/**
+ * Versión apagada de un color de énfasis: se mezcla con un gris de su misma luminosidad para que
+ * no sobresalga tanto, sin cambiar el tono.
+ */
+fun muted(color: Color, amount: Float = 0.3f): Color {
+    val l = color.luminance()
+    val gray = Color(l, l, l, color.alpha)
+    return lerp(color, gray, amount)
+}
+
+/** Acento aclarado (u oscurecido) lo justo para leerse como icono o texto sobre el fondo. */
+private fun foregroundAccent(accent: Color, dark: Boolean): Color {
+    val l = accent.luminance()
+    return when {
+        dark && l < 0.3f -> lerp(accent, Color.White, ((0.3f - l) / 0.3f * 0.6f).coerceIn(0f, 0.6f))
+        !dark && l > 0.5f -> lerp(accent, Color.Black, ((l - 0.5f) / 0.5f * 0.6f).coerceIn(0f, 0.6f))
+        else -> accent
+    }
+}
+
 /** Texto legible sobre un fondo de ese color. */
 fun readableOn(color: Color): Color = if (color.luminance() > 0.45f) Color(0xFF0B0D12) else Color.White
 
@@ -177,7 +200,7 @@ fun GlassTheme(settings: AppSettings, content: @Composable () -> Unit) {
     val dark = isDarkTheme(settings.themeMode)
     val base = if (dark) DarkGlass else LightGlass
     val p = if (settings.backgroundMode == 1) {
-        val accent = Color(settings.accentColor)
+        val accent = muted(Color(settings.accentColor))
         base.copy(accent = accent, onAccent = onAccentGlass(accent, base.base), blobs = listOf(accent), accentGlow = true)
     } else {
         val set = COLOR_SETS.getOrElse(settings.colorSet) { COLOR_SETS[0] }
@@ -203,9 +226,10 @@ fun GlassTheme(settings: AppSettings, content: @Composable () -> Unit) {
             error = p.danger,
         )
     }
+    val palette = p.copy(accentFg = foregroundAccent(p.accent, dark))
     MaterialTheme(colorScheme = scheme) {
         CompositionLocalProvider(
-            LocalGlass provides p,
+            LocalGlass provides palette,
             LocalContentColor provides p.content,
             content = content,
         )
@@ -304,7 +328,7 @@ fun LiquidBackground(modifier: Modifier = Modifier, animated: Boolean = true) {
 private fun AccentGlowBackground(modifier: Modifier) {
     val p = LocalGlass.current
     val accent = p.blobs.first()
-    val strong = if (p.dark) 0.32f else 0.45f
+    val strong = if (p.dark) 0.18f else 0.3f
     Canvas(modifier) {
         drawRect(p.base)
         val r = max(size.width, size.height)

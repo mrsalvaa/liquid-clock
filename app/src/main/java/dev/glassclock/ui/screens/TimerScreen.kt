@@ -234,7 +234,7 @@ private fun TimerCard(timer: TimerItem, now: Long) {
                     val tl = Offset(stroke / 2, stroke / 2)
                     drawArc(p.content.copy(alpha = 0.12f), 0f, 360f, false, tl, arc, style = Stroke(stroke))
                     drawArc(
-                        if (timer.state == TimerState.PAUSED) p.contentSecondary else p.accent,
+                        if (timer.state == TimerState.PAUSED) p.contentSecondary else p.accentFg,
                         -90f, 360f * progress, false, tl, arc,
                         style = Stroke(stroke, cap = StrokeCap.Round),
                     )

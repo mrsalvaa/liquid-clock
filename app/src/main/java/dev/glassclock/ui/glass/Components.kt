@@ -330,7 +330,7 @@ fun GlassTextField(
                 onValueChange = onValueChange,
                 singleLine = singleLine,
                 textStyle = style.copy(color = p.content),
-                cursorBrush = SolidColor(p.accent),
+                cursorBrush = SolidColor(p.accentFg),
                 keyboardOptions = keyboardOptions,
                 keyboardActions = keyboardActions,
                 modifier = Modifier
