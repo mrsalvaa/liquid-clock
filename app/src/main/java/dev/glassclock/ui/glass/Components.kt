@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,6 +96,9 @@ fun GlassSurface(
     val surface = tint ?: if (strong) p.tintStrong else p.tint
     val clickable = onClick != null || onLongClick != null
 
+    // El efecto de cristal no se entera de los cambios de color de su tinte: al cambiar de tema
+    // (o de color de énfasis) se rehace la superficie para que no se quede con el tinte anterior.
+    key(surface, p.dark) {
     Box(
         modifier
             .drawBackdrop(
@@ -149,6 +153,7 @@ fun GlassSurface(
             content = content,
         )
     }
+    }
 }
 
 /** Tarjeta de cristal con relleno y columna. */
@@ -186,7 +191,7 @@ fun GlassIconButton(
             icon,
             contentDescription,
             Modifier.align(Alignment.Center).size(size * 0.45f),
-            tint = if (prominent) Color.White else p.content,
+            tint = if (prominent) p.onAccent else p.content,
         )
     }
 }
@@ -207,7 +212,11 @@ fun GlassButton(
         prominent -> p.accent.copy(alpha = 0.6f)
         else -> null
     }
-    val textColor = if (prominent || danger) Color.White else p.content
+    val textColor = when {
+        danger -> Color.White
+        prominent -> p.onAccent
+        else -> p.content
+    }
     GlassSurface(
         modifier.heightIn(min = 54.dp).graphicsLayer { alpha = if (enabled) 1f else 0.4f },
         shape = CircleShape,
@@ -251,7 +260,7 @@ fun GlassChip(
         Text(
             text,
             Modifier.align(Alignment.Center).padding(horizontal = 14.dp),
-            color = if (selected) Color.White else p.content,
+            color = if (selected) p.onAccent else p.content,
             fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1,

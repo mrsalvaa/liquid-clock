@@ -58,7 +58,9 @@ import dev.glassclock.ui.glass.PromptSpec
 import dev.glassclock.ui.glass.SheetAction
 import dev.glassclock.ui.glass.SheetSpec
 import dev.glassclock.ui.glass.ScreenTitle
+import dev.glassclock.ui.glass.WheelColon
 import dev.glassclock.ui.glass.WheelPicker
+import androidx.compose.ui.text.style.TextAlign
 import dev.glassclock.util.formatDurationShort
 import dev.glassclock.util.formatTimer
 
@@ -110,11 +112,24 @@ fun TimerScreen(contentPadding: PaddingValues) {
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    WheelColumn("h") { WheelPicker(100, h, { h = it }, width = 76.dp, fontSize = 34) }
-                    Text(":", fontSize = 34.sp)
-                    WheelColumn("min") { WheelPicker(60, m, { m = it }, width = 76.dp, fontSize = 34) }
-                    Text(":", fontSize = 34.sp)
-                    WheelColumn("s") { WheelPicker(60, s, { s = it }, width = 76.dp, fontSize = 34) }
+                    WheelPicker(100, h, { h = it }, width = 76.dp, fontSize = 34)
+                    WheelColon(34)
+                    WheelPicker(60, m, { m = it }, width = 76.dp, fontSize = 34)
+                    WheelColon(34)
+                    WheelPicker(60, s, { s = it }, width = 76.dp, fontSize = 34)
+                }
+                // Unidades en su propia fila para no desplazar los ":" hacia abajo.
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    listOf("h", "min", "s").forEachIndexed { i, unit ->
+                        if (i > 0) Spacer(Modifier.width((34 * 0.45f).dp))
+                        Text(
+                            unit,
+                            Modifier.width(76.dp),
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center,
+                            color = p.contentSecondary,
+                        )
+                    }
                 }
             }
         }
@@ -178,14 +193,6 @@ fun TimerScreen(contentPadding: PaddingValues) {
         items(timers.reversed(), key = { it.id }) { timer ->
             TimerCard(timer, now)
         }
-    }
-}
-
-@Composable
-private fun WheelColumn(unit: String, wheel: @Composable () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        wheel()
-        Text(unit, fontSize = 13.sp, color = LocalGlass.current.contentSecondary)
     }
 }
 

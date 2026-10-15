@@ -19,6 +19,8 @@ Inspirado en el reloj de Samsung, pensado para uso personal y publicado bajo GPL
 - Los botones de volumen posponen (desactivable).
 - Omitir solo la próxima ocurrencia de una alarma que se repite.
 - Grupos de alarmas: plegables y con un interruptor que enciende o apaga todas sus alarmas a la vez.
+- Desactivar una alarma que se repite solo por hoy: mañana se reactiva sola.
+- Notificación 2 horas antes de cada alarma para descartar solo esa vez (desactivable).
 - Silencio automático tras N minutos (pospone si se puede).
 - Pantalla completa sobre la pantalla de bloqueo.
 
@@ -29,6 +31,10 @@ Inspirado en el reloj de Samsung, pensado para uso personal y publicado bajo GPL
 **Temporizador**: varios a la vez, preajustes guardables, pausa, +1 min y notificación con cuenta atrás.
 
 Mantén pulsada una alarma, un temporizador o una ciudad para ver sus opciones (editar, duplicar, omitir, eliminar...).
+
+Desliza a izquierda o derecha para cambiar de pestaña. Toca el número de cualquier rueda para escribirlo con el teclado.
+
+**Apariencia**: tema del sistema, claro u oscuro; fondo de colores en movimiento o un color de énfasis (10 colores con 3 tonos cada uno); e iconos alternativos de la app al estilo Material, Samsung, iPhone y Motorola.
 
 **Modo sueño**: recordatorio para acostarte con el tiempo de sueño que tendrás hasta tu próxima alarma.
 

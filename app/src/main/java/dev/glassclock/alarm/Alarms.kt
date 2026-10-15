@@ -15,19 +15,25 @@ import dev.glassclock.util.Notif
 import dev.glassclock.util.formatInstantClock
 import dev.glassclock.util.is24h
 import dev.glassclock.util.nextOccurrenceOf
+import dev.glassclock.util.relativeDay
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /** Próxima ocurrencia regular, respetando la omitida. */
 fun Alarm.nextOccurrence(nowMs: Long = System.currentTimeMillis()): ZonedDateTime {
-    val now = Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault())
+    // En pausa ("activar para mañana"): se busca a partir del final de la pausa.
+    val fromMs = pausedUntil?.takeIf { it > nowMs }?.minus(1) ?: nowMs
+    val now = Instant.ofEpochMilli(fromMs).atZone(ZoneId.systemDefault())
     var next = nextOccurrenceOf(hour, minute, days, now)
     if (skippedOccurrence != null && next.toInstant().toEpochMilli() == skippedOccurrence) {
         next = nextOccurrenceOf(hour, minute, days, next)
     }
     return next
 }
+
+/** Apagada hoy y se reactiva sola mañana. */
+fun Alarm.isPaused(nowMs: Long = System.currentTimeMillis()) = enabled && pausedUntil?.let { it > nowMs } == true
 
 /** Su grupo, si tiene. */
 val Alarm.group: AlarmGroup? get() = groupId?.let { id -> Stores.groups.value.firstOrNull { it.id == id } }
@@ -73,7 +79,20 @@ object Alarms {
 
     fun setEnabled(context: Context, id: Int, enabled: Boolean) {
         val alarm = get(id) ?: return
-        save(context, alarm.copy(enabled = enabled, skippedOccurrence = null, snoozedUntil = null, snoozeCount = 0))
+        save(
+            context,
+            alarm.copy(enabled = enabled, skippedOccurrence = null, snoozedUntil = null, snoozeCount = 0, pausedUntil = null),
+        )
+    }
+
+    /** Apaga la alarma hoy; mañana vuelve a sonar en sus días como siempre. */
+    fun pauseUntilTomorrow(context: Context, id: Int) {
+        val alarm = get(id) ?: return
+        val tomorrow = java.time.LocalDate.now().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        save(
+            context,
+            alarm.copy(enabled = true, pausedUntil = tomorrow, skippedOccurrence = null, snoozedUntil = null, snoozeCount = 0),
+        )
     }
 
     /** Omite la próxima ocurrencia; una alarma única se desactiva. */
@@ -99,6 +118,7 @@ object Alarms {
         val updated = alarm.copy(snoozedUntil = null)
         update(updated)
         cancelSnoozeNotification(context, id)
+        cancelUpcoming(context, id)
         if (updated.isRepeating) schedule(context, updated)
         return updated
     }
@@ -191,7 +211,9 @@ object Alarms {
         val am = context.getSystemService(AlarmManager::class.java)
         val pi = firePendingIntent(context, alarm.id)
         am.cancel(pi)
+        cancelUpcoming(context, alarm.id)
         val trigger = alarm.nextTrigger() ?: return
+        scheduleUpcoming(context, alarm, trigger)
         val show = PendingIntent.getActivity(
             context, 0, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE,
@@ -203,7 +225,77 @@ object Alarms {
         }
     }
 
+    // --- Aviso 2 horas antes ---
+
+    private const val UPCOMING_MS = 2 * 60 * 60_000L
+    const val EXTRA_AT = "at"
+
+    private fun scheduleUpcoming(context: Context, alarm: Alarm, trigger: Long) {
+        if (!Stores.settings.value.upcomingNotice) return
+        val now = System.currentTimeMillis()
+        // Una alarma pospuesta ya tiene su propia notificación.
+        if (alarm.snoozedUntil?.let { it > now } == true) return
+        val at = trigger - UPCOMING_MS
+        if (at <= now) {
+            showUpcoming(context, alarm.id, trigger)
+        } else {
+            context.getSystemService(AlarmManager::class.java)
+                .setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, upcomingPendingIntent(context, alarm.id, trigger))
+        }
+    }
+
+    /** Muestra el aviso si la alarma sigue programada para [trigger]. */
+    fun showUpcoming(context: Context, id: Int, trigger: Long) {
+        val alarm = get(id) ?: return
+        if (alarm.nextTrigger() != trigger) return
+        val nm = NotificationManagerCompat.from(context)
+        if (!nm.areNotificationsEnabled()) return
+        val skip = PendingIntent.getBroadcast(
+            context, Notif.upcomingId(id),
+            Intent(context, AlarmReceiver::class.java)
+                .setAction(AlarmReceiver.ACTION_SKIP_UPCOMING)
+                .putExtra(EXTRA_ID, id),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val open = PendingIntent.getActivity(
+            context, 0, Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+        val time = formatInstantClock(trigger, is24h(context))
+        val day = relativeDay(Instant.ofEpochMilli(trigger).atZone(ZoneId.systemDefault()))
+        val n = NotificationCompat.Builder(context, Notif.CH_UPCOMING)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Próxima alarma: $time" + if (alarm.label.isNotBlank()) " · ${alarm.label}" else "")
+            .setContentText(if (alarm.isRepeating) "$day. Descártala para saltar solo esta vez." else "$day.")
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setContentIntent(open)
+            .setWhen(trigger)
+            .addAction(0, "Descartar", skip)
+            .build()
+        try {
+            nm.notify(Notif.upcomingId(id), n)
+        } catch (e: SecurityException) {
+            // Sin permiso de notificaciones.
+        }
+    }
+
+    private fun upcomingPendingIntent(context: Context, id: Int, trigger: Long = 0): PendingIntent =
+        PendingIntent.getBroadcast(
+            context, Notif.upcomingId(id),
+            Intent(context, AlarmReceiver::class.java)
+                .setAction(AlarmReceiver.ACTION_UPCOMING)
+                .putExtra(EXTRA_ID, id)
+                .putExtra(EXTRA_AT, trigger),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+    private fun cancelUpcoming(context: Context, id: Int) {
+        context.getSystemService(AlarmManager::class.java).cancel(upcomingPendingIntent(context, id))
+        NotificationManagerCompat.from(context).cancel(Notif.upcomingId(id))
+    }
+
     private fun cancel(context: Context, id: Int) {
+        cancelUpcoming(context, id)
         context.getSystemService(AlarmManager::class.java).cancel(firePendingIntent(context, id))
     }
 

@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.Snooze
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,6 +61,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.glassclock.alarm.Alarms
+import dev.glassclock.alarm.isPaused
 import dev.glassclock.alarm.isRepeating
 import dev.glassclock.alarm.nextOccurrence
 import dev.glassclock.alarm.nextTrigger
@@ -111,7 +113,8 @@ fun AlarmListScreen(
         item(key = "a${alarm.id}") {
             AlarmCard(
                 alarm = alarm,
-                active = alarm.enabled && groups.firstOrNull { it.id == alarm.groupId }?.enabled != false,
+                active = alarm.enabled && !alarm.isPaused(now) &&
+                    groups.firstOrNull { it.id == alarm.groupId }?.enabled != false,
                 now = now,
                 is24 = is24,
                 modifier = if (nested) Modifier.padding(start = 16.dp) else Modifier,
@@ -119,7 +122,13 @@ fun AlarmListScreen(
                 onLongClick = {
                     showSheet(alarmMenu(context, alarm, now, is24, showSheet, showPrompt) { onEdit(alarm.id) })
                 },
-                onToggle = { Alarms.setEnabled(context, alarm.id, it) },
+                onToggle = { on ->
+                    if (!on && alarm.isRepeating && !alarm.isPaused(now)) {
+                        showSheet(turnOffMenu(context, alarm))
+                    } else {
+                        Alarms.setEnabled(context, alarm.id, on)
+                    }
+                },
             )
         }
     }
@@ -224,7 +233,7 @@ private fun AlarmCard(
                     color = if (status.second) p.accent else p.contentSecondary.copy(alpha = dim),
                 )
             }
-            GlassSwitch(alarm.enabled, onToggle)
+            GlassSwitch(alarm.enabled && !alarm.isPaused(now), onToggle)
         }
     }
 }
@@ -246,13 +255,23 @@ private fun alarmMenu(
         subtitle = formatDays(alarm.days) ?: "Una sola vez",
         actions = buildList {
             add(SheetAction("Editar", Icons.Rounded.Edit, onClick = onEdit))
+            val paused = alarm.isPaused(now)
+            val on = alarm.enabled && !paused
             add(
                 SheetAction(
-                    if (alarm.enabled) "Desactivar" else "Activar",
-                    if (alarm.enabled) Icons.Rounded.AlarmOff else Icons.Rounded.AlarmOn,
-                ) { Alarms.setEnabled(context, alarm.id, !alarm.enabled) },
+                    if (on) "Desactivar" else "Activar",
+                    if (on) Icons.Rounded.AlarmOff else Icons.Rounded.AlarmOn,
+                ) { Alarms.setEnabled(context, alarm.id, !on) },
             )
-            if (alarm.enabled && alarm.isRepeating) {
+            if (alarm.isRepeating && !paused) {
+                add(
+                    SheetAction(
+                        if (on) "Desactivar hasta mañana" else "Activar desde mañana",
+                        Icons.Rounded.Snooze,
+                    ) { Alarms.pauseUntilTomorrow(context, alarm.id) },
+                )
+            }
+            if (on && alarm.isRepeating) {
                 add(
                     SheetAction(
                         if (skipped) "Restaurar la próxima" else "Omitir la próxima",
@@ -270,6 +289,16 @@ private fun alarmMenu(
         },
     )
 }
+
+/** Al apagar una alarma que se repite: para siempre o solo hoy. */
+private fun turnOffMenu(context: Context, alarm: Alarm): SheetSpec = SheetSpec(
+    title = "Desactivar alarma",
+    subtitle = formatDays(alarm.days),
+    actions = listOf(
+        SheetAction("Desactivar hasta mañana", Icons.Rounded.Snooze) { Alarms.pauseUntilTomorrow(context, alarm.id) },
+        SheetAction("Desactivar", Icons.Rounded.AlarmOff) { Alarms.setEnabled(context, alarm.id, false) },
+    ),
+)
 
 private fun moveMenu(context: Context, alarm: Alarm, showPrompt: (PromptSpec) -> Unit): SheetSpec =
     SheetSpec(
@@ -399,6 +428,7 @@ private fun GroupCard(
 
 /** Texto bajo la hora y si debe resaltarse. */
 private fun alarmStatus(alarm: Alarm, active: Boolean, now: Long, is24: Boolean): Pair<String, Boolean> {
+    if (alarm.isPaused(now)) return "Desactivada hoy · se reactiva mañana" to true
     if (alarm.enabled && !active) return "Grupo desactivado" to false
     if (alarm.enabled) {
         alarm.snoozedUntil?.takeIf { it > now }?.let {

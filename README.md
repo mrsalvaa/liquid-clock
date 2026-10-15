@@ -21,6 +21,8 @@ Inspired by Samsung's clock app, built for personal use and released under GPL-3
 - Volume buttons snooze (can be turned off).
 - Skip only the next occurrence of a repeating alarm.
 - Alarm groups: collapsible, with a switch that turns all their alarms on or off at once.
+- Turn a repeating alarm off just for today: it comes back on by itself tomorrow.
+- A notification 2 hours before each alarm lets you dismiss that one occurrence (can be turned off).
 - Auto-silence after N minutes (snoozes if possible).
 - Full-screen alarm over the lock screen.
 
@@ -31,6 +33,10 @@ Inspired by Samsung's clock app, built for personal use and released under GPL-3
 **Timer**: several at once, saveable presets, pause, +1 min and a countdown notification.
 
 Long-press an alarm, timer or city to see its options (edit, duplicate, skip, delete...).
+
+Swipe left or right to change tabs. Tap the number in any wheel to type it with the keyboard.
+
+**Appearance**: system, light or dark theme; moving colour backgrounds or a single accent colour (10 colours, 3 tones each); and alternative app icons in Material, Samsung, iPhone and Motorola styles.
 
 **Bedtime**: a reminder to go to bed, showing how much sleep you'll get before your next alarm.
 

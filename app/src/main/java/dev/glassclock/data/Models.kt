@@ -26,6 +26,8 @@ data class Alarm(
     val snoozeCount: Int = 0,
     /** Grupo al que pertenece, o null. */
     val groupId: Int? = null,
+    /** "Activar para mañana": no suena antes de este instante (inicio de mañana). */
+    val pausedUntil: Long? = null,
 )
 
 /** Grupo de alarmas: su interruptor apaga todas sin tocar el interruptor de cada una. */
@@ -81,6 +83,16 @@ data class AppSettings(
     val animatedBackground: Boolean = true,
     /** Índice en COLOR_SETS. */
     val colorSet: Int = 0,
+    /** 0 = según el sistema, 1 = claro, 2 = oscuro. */
+    val themeMode: Int = 0,
+    /** 0 = colores en movimiento (COLOR_SETS), 1 = color de énfasis. */
+    val backgroundMode: Int = 0,
+    /** Color de énfasis en ARGB, para backgroundMode = 1. */
+    val accentColor: Long = 0xFF0EA5E9,
+    /** Índice del icono de la app (ver AppIcons). */
+    val appIcon: Int = 0,
+    /** Notificación 2 h antes de cada alarma para poder descartarla. */
+    val upcomingNotice: Boolean = true,
     /** Sonido de las alarmas que usan el predeterminado. null = el del sistema. */
     val alarmRingtoneUri: String? = null,
     val timerRingtoneUri: String? = null,

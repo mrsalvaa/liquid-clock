@@ -93,7 +93,7 @@ private fun RingMain(state: RingState, onDismiss: () -> Unit) {
                     if (state.kind == RingState.Kind.ALARM) Icons.Rounded.Alarm else Icons.Rounded.HourglassBottom,
                     null,
                     Modifier.align(Alignment.Center).size(44.dp),
-                    tint = androidx.compose.ui.graphics.Color.White,
+                    tint = p.onAccent,
                 )
             }
             Spacer(Modifier.height(24.dp))

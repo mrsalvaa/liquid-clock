@@ -51,6 +51,7 @@ import dev.glassclock.ui.glass.LocalPrompt
 import dev.glassclock.ui.glass.PromptSpec
 import dev.glassclock.ui.glass.SectionLabel
 import dev.glassclock.ui.glass.SettingRow
+import dev.glassclock.ui.glass.WheelColon
 import dev.glassclock.ui.glass.WheelPicker
 import dev.glassclock.util.formatDays
 import dev.glassclock.util.formatUntil
@@ -73,7 +74,7 @@ fun AlarmEditScreen(alarmId: Int?, groupId: Int?, contentPadding: PaddingValues,
     val now by rememberNow(1000)
 
     fun save() {
-        val saved = draft.copy(enabled = true, skippedOccurrence = null, snoozedUntil = null, snoozeCount = 0)
+        val saved = draft.copy(enabled = true, skippedOccurrence = null, snoozedUntil = null, snoozeCount = 0, pausedUntil = null)
         Alarms.save(context, saved)
         Toast.makeText(context, saved.untilText(), Toast.LENGTH_SHORT).show()
         onClose()
@@ -105,7 +106,7 @@ fun AlarmEditScreen(alarmId: Int?, groupId: Int?, contentPadding: PaddingValues,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 WheelPicker(24, draft.hour, { draft = draft.copy(hour = it) })
-                Text(":", fontSize = 40.sp, modifier = Modifier.padding(horizontal = 6.dp))
+                WheelColon(38)
                 WheelPicker(60, draft.minute, { draft = draft.copy(minute = it) })
             }
             val preview = draft.copy(enabled = true, skippedOccurrence = null, snoozedUntil = null)

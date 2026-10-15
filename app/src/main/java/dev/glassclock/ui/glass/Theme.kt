@@ -33,6 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
+import dev.glassclock.data.AppSettings
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -56,6 +59,8 @@ data class GlassPalette(
     val danger: Color,
     val success: Color,
     val blobs: List<Color>,
+    /** Modo color de énfasis: el fondo es un brillo quieto del acento en vez de manchas. */
+    val accentGlow: Boolean = false,
 )
 
 val DarkGlass = GlassPalette(
@@ -130,6 +135,28 @@ val COLOR_SETS = listOf(
     ),
 )
 
+/** Colores de énfasis: cada uno con tres tonos (claro, medio, oscuro). */
+data class AccentHue(val name: String, val tones: List<Color>)
+
+val ACCENT_HUES = listOf(
+    AccentHue("Rojo", listOf(Color(0xFFFCA5A5), Color(0xFFEF4444), Color(0xFFB91C1C))),
+    AccentHue("Naranja", listOf(Color(0xFFFDBA74), Color(0xFFF97316), Color(0xFFC2410C))),
+    AccentHue("Amarillo", listOf(Color(0xFFFDE68A), Color(0xFFFACC15), Color(0xFFCA8A04))),
+    AccentHue("Verde", listOf(Color(0xFF86EFAC), Color(0xFF22C55E), Color(0xFF15803D))),
+    AccentHue("Menta", listOf(Color(0xFF5EEAD4), Color(0xFF14B8A6), Color(0xFF0F766E))),
+    AccentHue("Celeste", listOf(Color(0xFF7DD3FC), Color(0xFF0EA5E9), Color(0xFF0369A1))),
+    AccentHue("Azul", listOf(Color(0xFF93C5FD), Color(0xFF3B82F6), Color(0xFF1D4ED8))),
+    AccentHue("Violeta", listOf(Color(0xFFC4B5FD), Color(0xFF8B5CF6), Color(0xFF6D28D9))),
+    AccentHue("Rosa", listOf(Color(0xFFF9A8D4), Color(0xFFEC4899), Color(0xFFBE185D))),
+    AccentHue("Gris", listOf(Color(0xFFE5E7EB), Color(0xFF9CA3AF), Color(0xFF4B5563))),
+)
+
+/** Texto legible sobre un fondo de ese color. */
+fun readableOn(color: Color): Color = if (color.luminance() > 0.45f) Color(0xFF0B0D12) else Color.White
+
+/** Texto legible sobre el cristal teñido de acento (acento al ~55 % sobre la base). */
+private fun onAccentGlass(accent: Color, base: Color): Color = readableOn(accent.copy(alpha = 0.55f).compositeOver(base))
+
 val LocalGlass = staticCompositionLocalOf { DarkGlass }
 
 /** false en las pestañas ocultas: sirve para pausar lo que se refresca en cada fotograma. */
@@ -137,14 +164,29 @@ val LocalTabActive = compositionLocalOf { true }
 /** Lo que refractan las superficies de cristal: el fondo, o el fondo más el contenido. */
 val LocalBackdrop = staticCompositionLocalOf<Backdrop> { error("Falta GlassRoot") }
 
+/** Si el tema es oscuro según los ajustes (0 sistema, 1 claro, 2 oscuro). */
 @Composable
-fun GlassTheme(colorSet: Int = 0, content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val set = COLOR_SETS.getOrElse(colorSet) { COLOR_SETS[0] }
-    val p = if (dark) {
-        DarkGlass.copy(blobs = set.darkBlobs, accent = set.darkAccent)
+fun isDarkTheme(themeMode: Int): Boolean = when (themeMode) {
+    1 -> false
+    2 -> true
+    else -> isSystemInDarkTheme()
+}
+
+@Composable
+fun GlassTheme(settings: AppSettings, content: @Composable () -> Unit) {
+    val dark = isDarkTheme(settings.themeMode)
+    val base = if (dark) DarkGlass else LightGlass
+    val p = if (settings.backgroundMode == 1) {
+        val accent = Color(settings.accentColor)
+        base.copy(accent = accent, onAccent = onAccentGlass(accent, base.base), blobs = listOf(accent), accentGlow = true)
     } else {
-        LightGlass.copy(blobs = set.lightBlobs, accent = set.lightAccent)
+        val set = COLOR_SETS.getOrElse(settings.colorSet) { COLOR_SETS[0] }
+        val accent = if (dark) set.darkAccent else set.lightAccent
+        base.copy(
+            blobs = if (dark) set.darkBlobs else set.lightBlobs,
+            accent = accent,
+            onAccent = onAccentGlass(accent, base.base),
+        )
     }
     val scheme = if (dark) {
         darkColorScheme(
@@ -228,6 +270,10 @@ fun LiquidBackground(modifier: Modifier = Modifier, animated: Boolean = true) {
         animated -> 0.42f
         else -> 0.6f
     }
+    if (p.accentGlow) {
+        AccentGlowBackground(modifier)
+        return
+    }
     Canvas(modifier) {
         drawRect(p.base)
         val w = size.width
@@ -247,6 +293,28 @@ fun LiquidBackground(modifier: Modifier = Modifier, animated: Boolean = true) {
                     radius = r,
                 ),
                 radius = r,
+                center = center,
+            )
+        }
+    }
+}
+
+/** Fondo del modo color de énfasis: base oscura (o clara) con dos resplandores quietos del acento. */
+@Composable
+private fun AccentGlowBackground(modifier: Modifier) {
+    val p = LocalGlass.current
+    val accent = p.blobs.first()
+    val strong = if (p.dark) 0.32f else 0.45f
+    Canvas(modifier) {
+        drawRect(p.base)
+        val r = max(size.width, size.height)
+        listOf(
+            Offset(size.width * 0.1f, size.height * 0.05f) to strong,
+            Offset(size.width * 0.95f, size.height * 0.85f) to strong * 0.55f,
+        ).forEach { (center, alpha) ->
+            drawCircle(
+                Brush.radialGradient(listOf(accent.copy(alpha = alpha), Color.Transparent), center, r * 0.75f),
+                radius = r * 0.75f,
                 center = center,
             )
         }

@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -28,6 +30,17 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -83,6 +96,7 @@ import dev.glassclock.data.Stores
 import dev.glassclock.ui.glass.GlassNavBar
 import dev.glassclock.ui.glass.GlassRoot
 import dev.glassclock.ui.glass.GlassTheme
+import dev.glassclock.ui.glass.isDarkTheme
 import dev.glassclock.ui.glass.NavItem
 import dev.glassclock.ui.screens.AddCityScreen
 import dev.glassclock.ui.screens.AlarmEditScreen
@@ -128,7 +142,8 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             val settings by Stores.settings.state.collectAsStateWithLifecycle()
-            GlassTheme(settings.colorSet) {
+            SystemBarsFor(isDarkTheme(settings.themeMode))
+            GlassTheme(settings) {
                 App(settings.animatedBackground, requestedTab) { requestedTab = null }
             }
         }
@@ -147,6 +162,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(TAB_ALARM) }
+    // Posición de la barra mientras se desliza entre pestañas (p. ej. 1,4), o null.
+    var tabDrag by remember { mutableStateOf<Float?>(null) }
     var overlay by remember { mutableStateOf<Overlay?>(null) }
     var sheet by remember { mutableStateOf<SheetSpec?>(null) }
     var prompt by remember { mutableStateOf<PromptSpec?>(null) }
@@ -194,6 +211,7 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
                             NavItem("Mundial", Icons.Rounded.Public),
                         ),
                         selected = tab,
+                        dragPosition = tabDrag,
                         onSelect = { tab = it },
                         modifier = Modifier
                             .navigationBarsPadding()
@@ -213,24 +231,17 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
                 label = "overlay",
             ) { current ->
                 when (current) {
-                    // Las cuatro pestañas se quedan creadas y solo se muestra la activa: el cambio es
-                    // instantáneo, como en iOS, sin reconstruir la pantalla ni su cristal (eso daba
-                    // tirones a 120 Hz). Además cada pestaña conserva su scroll.
-                    null -> Box(Modifier.fillMaxSize()) {
-                        for (t in TAB_ALARM..TAB_WORLD) {
-                            KeptTab(active = t == tab) {
-                                when (t) {
-                                    TAB_ALARM -> AlarmListScreen(
-                                        tabPadding,
-                                        onEdit = { overlay = Overlay.EditAlarm(it) },
-                                        onNew = { overlay = Overlay.EditAlarm(null, it) },
-                                        onSettings = { overlay = Overlay.Settings },
-                                    )
-                                    TAB_STOPWATCH -> StopwatchScreen(tabPadding)
-                                    TAB_TIMER -> TimerScreen(tabPadding)
-                                    else -> WorldClockScreen(tabPadding, onAddCity = { overlay = Overlay.AddCity })
-                                }
-                            }
+                    null -> SwipeTabs(tab, onTab = { tab = it }, onDrag = { tabDrag = it }) { t ->
+                        when (t) {
+                            TAB_ALARM -> AlarmListScreen(
+                                tabPadding,
+                                onEdit = { overlay = Overlay.EditAlarm(it) },
+                                onNew = { overlay = Overlay.EditAlarm(null, it) },
+                                onSettings = { overlay = Overlay.Settings },
+                            )
+                            TAB_STOPWATCH -> StopwatchScreen(tabPadding)
+                            TAB_TIMER -> TimerScreen(tabPadding)
+                            else -> WorldClockScreen(tabPadding, onAddCity = { overlay = Overlay.AddCity })
                         }
                     }
                     is Overlay.EditAlarm -> AlarmEditScreen(current.id, current.groupId, overlayPadding) { overlay = null }
@@ -243,34 +254,96 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
 }
 
 /**
- * Pestaña que sigue en la composición aunque no esté activa. Oculta, no se dibuja en absoluto, queda
- * debajo de la activa y se traga los toques para que no lleguen a sus botones invisibles.
+ * Pestañas que se cambian deslizando. Todas siguen creadas (no se reconstruyen pantalla ni cristal
+ * en cada cambio, que daba tirones a 120 Hz), pero solo se dibuja la actual y, mientras se arrastra,
+ * la vecina. Las ocultas quedan debajo y se tragan los toques.
  */
 @Composable
-private fun KeptTab(active: Boolean, content: @Composable () -> Unit) {
+private fun SwipeTabs(
+    tab: Int,
+    onTab: (Int) -> Unit,
+    onDrag: (Float?) -> Unit,
+    content: @Composable (Int) -> Unit,
+) {
+    var width by remember { mutableIntStateOf(1) }
+    // Desplazamiento del arrastre en px: negativo = hacia la pestaña siguiente.
+    var dragX by remember { mutableFloatStateOf(0f) }
+    var settling by remember { mutableStateOf(false) }
+    val currentTab by rememberUpdatedState(tab)
+    fun report() = onDrag(if (dragX == 0f) null else currentTab - dragX / width)
+
     Box(
         Modifier
             .fillMaxSize()
-            .zIndex(if (active) 1f else 0f)
-            // Sin llamar a drawContent: así ni se graban sus capas ni se calcula su cristal.
-            .drawWithContent { if (active) drawContent() }
-            .then(
-                if (active) {
-                    Modifier
-                } else {
-                    Modifier
-                        .clearAndSetSemantics { }
-                        .pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                                }
-                            }
-                        }
+            .onSizeChanged { width = it.width.coerceAtLeast(1) }
+            .draggable(
+                orientation = Orientation.Horizontal,
+                enabled = !settling,
+                state = rememberDraggableState { delta ->
+                    val min = if (currentTab == TAB_WORLD) 0f else -width.toFloat()
+                    val max = if (currentTab == TAB_ALARM) 0f else width.toFloat()
+                    dragX = (dragX + delta).coerceIn(min, max)
+                    report()
+                },
+                onDragStopped = { velocity ->
+                    val fast = 1200f
+                    val target = when {
+                        currentTab < TAB_WORLD && (dragX < -width * 0.3f || velocity < -fast && dragX < 0f) -> -width.toFloat()
+                        currentTab > TAB_ALARM && (dragX > width * 0.3f || velocity > fast && dragX > 0f) -> width.toFloat()
+                        else -> 0f
+                    }
+                    settling = true
+                    animate(dragX, target, velocity, spring(dampingRatio = 1f, stiffness = 500f)) { v, _ ->
+                        dragX = v
+                        report()
+                    }
+                    if (target != 0f) onTab(currentTab + if (target < 0f) 1 else -1)
+                    dragX = 0f
+                    onDrag(null)
+                    settling = false
                 },
             ),
     ) {
-        CompositionLocalProvider(LocalTabActive provides active, content = content)
+        for (t in TAB_ALARM..TAB_WORLD) {
+            val active = t == tab
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .zIndex(if (active) 1f else 0f)
+                    // offset y no graphicsLayer: una capa propia por pestaña encarece el dibujo del cristal.
+                    .offset {
+                        val x = when {
+                            active -> dragX
+                            t == tab + 1 && dragX < 0f -> dragX + width
+                            t == tab - 1 && dragX > 0f -> dragX - width
+                            else -> 0f
+                        }
+                        IntOffset(x.roundToInt(), 0)
+                    }
+                    // Sin llamar a drawContent: ni se graban sus capas ni se calcula su cristal.
+                    .drawWithContent {
+                        val neighbour = (t == tab + 1 && dragX < 0f) || (t == tab - 1 && dragX > 0f)
+                        if (active || neighbour) drawContent()
+                    }
+                    .then(
+                        if (active) {
+                            Modifier
+                        } else {
+                            Modifier
+                                .clearAndSetSemantics { }
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                                        }
+                                    }
+                                }
+                        },
+                    ),
+            ) {
+                CompositionLocalProvider(LocalTabActive provides active) { content(t) }
+            }
+        }
     }
 }
 
@@ -317,5 +390,15 @@ private fun BoxScope.PermissionPrompt() {
                 GlassButton("Ahora no", { dismissed = true }, Modifier.fillMaxWidth().padding(top = 4.dp))
             }
         }
+    }
+}
+
+/** Iconos de las barras del sistema claros u oscuros según el tema elegido, no el del sistema. */
+@Composable
+fun SystemBarsFor(dark: Boolean) {
+    val activity = LocalActivity.current as? ComponentActivity ?: return
+    LaunchedEffect(dark) {
+        val style = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT) { dark }
+        activity.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 }

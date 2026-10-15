@@ -46,6 +46,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.glassclock.R
+import dev.glassclock.alarm.Alarms
 import dev.glassclock.bedtime.Bedtime
 import dev.glassclock.data.AppSettings
 import dev.glassclock.data.Stores
@@ -57,6 +58,7 @@ import dev.glassclock.ui.glass.GlassSwitch
 import dev.glassclock.ui.glass.LocalGlass
 import dev.glassclock.ui.glass.SectionLabel
 import dev.glassclock.ui.glass.SettingRow
+import dev.glassclock.ui.glass.WheelColon
 import dev.glassclock.ui.glass.WheelPicker
 import dev.glassclock.util.formatInstantClock
 import dev.glassclock.util.formatUntil
@@ -97,6 +99,12 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
                 subtitle = remember(s.alarmRingtoneUri) { ringtoneTitle(context, s.alarmRingtoneUri) },
                 onClick = { pickAlarmSound(s.alarmRingtoneUri) },
             )
+            SettingRow("Aviso 2 horas antes", subtitle = "Notificación para descartar la próxima alarma") {
+                GlassSwitch(s.upcomingNotice, { v ->
+                    edit { it.copy(upcomingNotice = v) }
+                    Alarms.rescheduleAll(context)
+                })
+            }
             SettingRow("Botones de volumen posponen", subtitle = "Mientras suena una alarma") {
                 GlassSwitch(s.volumeKeysSnooze, { v -> edit { it.copy(volumeKeysSnooze = v) } })
             }
@@ -127,7 +135,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     WheelPicker(24, s.bedtimeHour, { v -> edit { it.copy(bedtimeHour = v) } }, visibleItems = 3)
-                    Text(":", fontSize = 36.sp, modifier = Modifier.padding(horizontal = 6.dp))
+                    WheelColon(38)
                     WheelPicker(60, s.bedtimeMinute, { v -> edit { it.copy(bedtimeMinute = v) } }, visibleItems = 3)
                 }
                 DaySelector(s.bedtimeDays, { v -> edit { it.copy(bedtimeDays = v) } })
@@ -149,51 +157,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
         }
 
         SectionLabel("Apariencia")
-        GlassCard {
-            Text("Colores del fondo", fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                COLOR_SETS.forEachIndexed { i, set ->
-                    val selected = s.colorSet == i
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .clickable(remember { MutableInteractionSource() }, null) {
-                                edit { it.copy(colorSet = i) }
-                            },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        val blobs = if (p.dark) set.darkBlobs else set.lightBlobs
-                        Box(
-                            Modifier
-                                .size(52.dp)
-                                .border(
-                                    2.dp,
-                                    if (selected) p.content else Color.Transparent,
-                                    CircleShape,
-                                )
-                                .padding(4.dp)
-                                .clip(CircleShape)
-                                .background(Brush.linearGradient(listOf(blobs[0], blobs[1]))),
-                        )
-                        Text(
-                            set.name,
-                            Modifier.padding(top = 6.dp),
-                            fontSize = 12.sp,
-                            lineHeight = 14.sp,
-                            textAlign = TextAlign.Center,
-                            color = if (selected) p.content else p.contentSecondary,
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        )
-                    }
-                }
-            }
-            SettingRow("Fondo animado", subtitle = "Desactívalo para ahorrar batería") {
-                GlassSwitch(s.animatedBackground, { v -> edit { it.copy(animatedBackground = v) } })
-            }
-        }
+        AppearanceCard(s, ::edit)
 
         SectionLabel("Permisos")
         val missing = remember(tick) { missingPermissions(context) }

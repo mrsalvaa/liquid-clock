@@ -2,7 +2,9 @@ package dev.glassclock.ui.glass
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +13,19 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.launch
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -109,6 +124,9 @@ fun WheelPicker(
             state.firstVisibleItemIndex + if (state.firstVisibleItemScrollOffset > itemPx / 2) 1 else 0
         }
     }
+    val scope = rememberCoroutineScope()
+    // Tocar el número central abre el teclado para escribirlo.
+    var editing by remember { mutableStateOf(false) }
 
     // Notifica al soltar la rueda.
     LaunchedEffect(state) {
@@ -144,7 +162,19 @@ fun WheelPicker(
         ) {
             items(total) { index ->
                 val distance = abs(index - centerIndex)
-                Box(Modifier.height(itemHeight).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .height(itemHeight)
+                        .fillMaxWidth()
+                        // Toque simple y sin foco: un clickable recibiría el foco al cerrar el teclado.
+                        .pointerInput(index) {
+                            detectTapGestures {
+                                if (index == centerIndex) editing = true
+                                else scope.launch { state.animateScrollToItem(index) }
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
                     Text(
                         label(index % count),
                         fontSize = fontSize.sp,
@@ -159,7 +189,7 @@ fun WheelPicker(
                             scaleX = s
                             scaleY = s
                             alpha = when (distance) {
-                                0 -> 1f
+                                0 -> if (editing) 0f else 1f
                                 1 -> 0.6f
                                 else -> 0.25f
                             }
@@ -168,7 +198,66 @@ fun WheelPicker(
                 }
             }
         }
+        if (editing) {
+            WheelInput(
+                initial = label(value),
+                maxDigits = (count - 1).toString().length,
+                fontSize = fontSize,
+                modifier = Modifier.align(Alignment.Center).fillMaxWidth().height(itemHeight),
+            ) { typed ->
+                editing = false
+                typed?.takeIf { it in 0 until count }?.let { onChange(it) }
+            }
+        }
     }
+}
+
+/** Campo numérico sobre la lente de la rueda; [onDone] recibe null si no se escribió nada válido. */
+@Composable
+private fun WheelInput(initial: String, maxDigits: Int, fontSize: Int, modifier: Modifier, onDone: (Int?) -> Unit) {
+    val p = LocalGlass.current
+    var text by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
+    val focus = remember { FocusRequester() }
+    var focused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val done by rememberUpdatedState {
+        focusManager.clearFocus()
+        onDone(text.text.toIntOrNull())
+    }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    Box(modifier, contentAlignment = Alignment.Center) {
+        BasicTextField(
+            value = text,
+            onValueChange = { v ->
+                val digits = v.text.filter(Char::isDigit).take(maxDigits)
+                text = TextFieldValue(digits, TextRange(digits.length))
+            },
+            singleLine = true,
+            textStyle = TextStyle(fontSize = fontSize.sp, color = p.accent, textAlign = TextAlign.Center),
+            cursorBrush = SolidColor(p.accent),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { done() }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focus)
+                .onFocusChanged {
+                    // Al perder el foco (tocar fuera, ocultar el teclado) se aplica lo escrito.
+                    if (focused && !it.isFocused) done()
+                    focused = it.isFocused
+                },
+        )
+    }
+}
+
+/** ":" alineado con el centro de los números de las ruedas. */
+@Composable
+fun WheelColon(fontSize: Int = 38, modifier: Modifier = Modifier) {
+    Text(
+        ":",
+        modifier.width((fontSize * 0.45f).dp).offset(y = (-fontSize * 0.07f).dp),
+        fontSize = fontSize.sp,
+        textAlign = TextAlign.Center,
+    )
 }
 
 data class NavItem(val label: String, val icon: ImageVector)
@@ -180,8 +269,16 @@ fun GlassNavBar(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** Posición mientras se desliza entre pestañas (p. ej. 1,4); la burbuja sigue al dedo. */
+    dragPosition: Float? = null,
 ) {
     val p = LocalGlass.current
+    // Al tocar, salta con rebote; al deslizar entre pestañas, sigue al dedo.
+    val animated by animateFloatAsState(
+        selected.toFloat(),
+        spring(dampingRatio = 0.62f, stiffness = 420f),
+        label = "bubble",
+    )
     GlassSurface(
         modifier.fillMaxWidth().height(70.dp),
         shape = CircleShape,
@@ -190,14 +287,9 @@ fun GlassNavBar(
     ) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(6.dp)) {
             val itemWidth = maxWidth / items.size
-            val x by animateDpAsState(
-                itemWidth * selected,
-                spring(dampingRatio = 0.62f, stiffness = 420f),
-                label = "bubble",
-            )
             Box(
                 Modifier
-                    .offset(x = x)
+                    .offset { IntOffset((itemWidth * (dragPosition ?: animated)).roundToPx(), 0) }
                     .width(itemWidth)
                     .fillMaxHeight()
                     .clip(CircleShape)
@@ -276,7 +368,7 @@ fun SlideToConfirm(text: String, onConfirm: () -> Unit, modifier: Modifier = Mod
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.White)
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = readableOn(p.accent))
             }
         }
     }
