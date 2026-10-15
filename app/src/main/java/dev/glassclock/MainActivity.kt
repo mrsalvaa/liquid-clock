@@ -34,9 +34,10 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.zIndex
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -278,10 +279,54 @@ private fun SwipeTabs(
     var dragX by remember { mutableFloatStateOf(0f) }
     val scope = rememberCoroutineScope()
     var settle by remember { mutableStateOf<Job?>(null) }
-    fun report() = onDrag(if (dragX == 0f) null else shown - dragX / width)
+    // El detector de gestos se crea una vez: que use siempre las funciones más recientes.
+    val onTabNow by rememberUpdatedState(onTab)
+    val onDragNow by rememberUpdatedState(onDrag)
+    fun report() = onDragNow(if (dragX == 0f) null else shown - dragX / width)
     fun commit(newTab: Int) {
         shown = newTab
-        onTab(newTab)
+        onTabNow(newTab)
+    }
+
+    fun dragBy(delta: Float) {
+        val min = if (shown == TAB_WORLD) 0f else -width.toFloat()
+        val max = if (shown == TAB_ALARM) 0f else width.toFloat()
+        dragX = (dragX + delta).coerceIn(min, max)
+        report()
+    }
+
+    // Un deslizamiento nuevo interrumpe la animación del anterior. Si ya había pasado de la mitad,
+    // la pestaña vecina pasa a ser la actual sin mover nada en pantalla.
+    fun dragStart() {
+        settle?.cancel()
+        settle = null
+        if (dragX < -width / 2f && shown < TAB_WORLD) {
+            dragX += width
+            commit(shown + 1)
+        } else if (dragX > width / 2f && shown > TAB_ALARM) {
+            dragX -= width
+            commit(shown - 1)
+        }
+    }
+
+    fun dragStop(velocity: Float) {
+        val fast = 1200f
+        val target = when {
+            shown < TAB_WORLD && (dragX < -width * 0.3f || velocity < -fast && dragX < 0f) -> -width.toFloat()
+            shown > TAB_ALARM && (dragX > width * 0.3f || velocity > fast && dragX > 0f) -> width.toFloat()
+            else -> 0f
+        }
+        // En el borde (primera o última pestaña) no hay a dónde ir: se vuelve sin rebote.
+        val initialVelocity = if (target == 0f && dragX == 0f) 0f else velocity
+        settle = scope.launch {
+            animate(dragX, target, initialVelocity, spring(dampingRatio = 1f, stiffness = 500f)) { v, _ ->
+                dragX = v
+                report()
+            }
+            if (target != 0f) commit(shown + if (target < 0f) 1 else -1)
+            dragX = 0f
+            onDragNow(null)
+        }
     }
 
     // Cambio desde fuera (tocar la barra): se corta cualquier animación y se muestra sin más.
@@ -298,45 +343,32 @@ private fun SwipeTabs(
         Modifier
             .fillMaxSize()
             .onSizeChanged { width = it.width.coerceAtLeast(1) }
-            .draggable(
-                orientation = Orientation.Horizontal,
-                state = rememberDraggableState { delta ->
-                    val min = if (shown == TAB_WORLD) 0f else -width.toFloat()
-                    val max = if (shown == TAB_ALARM) 0f else width.toFloat()
-                    dragX = (dragX + delta).coerceIn(min, max)
-                    report()
-                },
-                onDragStarted = {
-                    // Un deslizamiento nuevo interrumpe la animación del anterior. Si ya había pasado
-                    // de la mitad, la pestaña vecina pasa a ser la actual sin mover nada en pantalla.
-                    settle?.cancel()
-                    settle = null
-                    if (dragX < -width / 2f && shown < TAB_WORLD) {
-                        dragX += width
-                        commit(shown + 1)
-                    } else if (dragX > width / 2f && shown > TAB_ALARM) {
-                        dragX -= width
-                        commit(shown - 1)
+            // Detector propio en vez de Modifier.draggable: cada gesto se procesa por separado y no
+            // depende de un bucle interno que, al chocar con el borde de la última pestaña tras una
+            // animación, podía quedarse muerto y dejar de reconocer deslizamientos.
+            .pointerInput(Unit) {
+                val tracker = VelocityTracker()
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var overSlop = 0f
+                    // Solo empieza si el gesto es horizontal y ningún hijo (listas horizontales,
+                    // ruedas...) se lo quedó antes.
+                    val start = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                        change.consume()
+                        overSlop = over
+                    } ?: return@awaitEachGesture
+                    dragStart()
+                    tracker.resetTracking()
+                    tracker.addPosition(start.uptimeMillis, start.position)
+                    dragBy(overSlop)
+                    val finished = horizontalDrag(start.id) { change ->
+                        dragBy(change.positionChange().x)
+                        change.consume()
+                        tracker.addPosition(change.uptimeMillis, change.position)
                     }
-                },
-                onDragStopped = { velocity ->
-                    val fast = 1200f
-                    val target = when {
-                        shown < TAB_WORLD && (dragX < -width * 0.3f || velocity < -fast && dragX < 0f) -> -width.toFloat()
-                        shown > TAB_ALARM && (dragX > width * 0.3f || velocity > fast && dragX > 0f) -> width.toFloat()
-                        else -> 0f
-                    }
-                    settle = scope.launch {
-                        animate(dragX, target, velocity, spring(dampingRatio = 1f, stiffness = 500f)) { v, _ ->
-                            dragX = v
-                            report()
-                        }
-                        if (target != 0f) commit(shown + if (target < 0f) 1 else -1)
-                        dragX = 0f
-                        onDrag(null)
-                    }
-                },
-            ),
+                    dragStop(if (finished) tracker.calculateVelocity().x else 0f)
+                }
+            },
     ) {
         for (t in TAB_ALARM..TAB_WORLD) {
             val active = t == shown

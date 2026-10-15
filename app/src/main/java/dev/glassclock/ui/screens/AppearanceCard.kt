@@ -56,6 +56,11 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
             edit { it.copy(themeMode = v) }
         }
 
+        Label("Formato de fecha")
+        ChipRow(listOf(0, 1, 2), s.dateFormat, { listOf("Texto", "dd/mm/aaaa", "mm/dd/aaaa")[it] }) { v ->
+            edit { it.copy(dateFormat = v) }
+        }
+
         Label("Fondo")
         ChipRow(listOf(0, 1), s.backgroundMode, { listOf("En movimiento", "Color de énfasis")[it] }) { v ->
             edit { it.copy(backgroundMode = v) }

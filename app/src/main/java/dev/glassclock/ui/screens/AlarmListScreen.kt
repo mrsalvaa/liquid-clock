@@ -266,7 +266,7 @@ private fun alarmMenu(
             if (alarm.isRepeating && !paused) {
                 add(
                     SheetAction(
-                        if (on) "Desactivar hasta mañana" else "Activar desde mañana",
+                        if (on) "Desactivar solo por hoy" else "Activar desde mañana",
                         Icons.Rounded.Snooze,
                     ) { Alarms.pauseUntilTomorrow(context, alarm.id) },
                 )
@@ -295,7 +295,7 @@ private fun turnOffMenu(context: Context, alarm: Alarm): SheetSpec = SheetSpec(
     title = "Desactivar alarma",
     subtitle = formatDays(alarm.days),
     actions = listOf(
-        SheetAction("Desactivar hasta mañana", Icons.Rounded.Snooze) { Alarms.pauseUntilTomorrow(context, alarm.id) },
+        SheetAction("Desactivar solo por hoy", Icons.Rounded.Snooze) { Alarms.pauseUntilTomorrow(context, alarm.id) },
         SheetAction("Desactivar", Icons.Rounded.AlarmOff) { Alarms.setEnabled(context, alarm.id, false) },
     ),
 )

@@ -93,6 +93,8 @@ data class AppSettings(
     val appIcon: Int = 0,
     /** Notificación 2 h antes de cada alarma para poder descartarla. */
     val upcomingNotice: Boolean = true,
+    /** Formato de fecha: 0 = texto ("15 de octubre"), 1 = dd/mm/aaaa, 2 = mm/dd/aaaa. */
+    val dateFormat: Int = 0,
     /** Sonido de las alarmas que usan el predeterminado. null = el del sistema. */
     val alarmRingtoneUri: String? = null,
     val timerRingtoneUri: String? = null,
