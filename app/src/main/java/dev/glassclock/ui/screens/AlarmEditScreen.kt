@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.glassclock.alarm.Alarms
 import dev.glassclock.alarm.isRepeating
-import dev.glassclock.alarm.nextTrigger
+import dev.glassclock.alarm.nextOccurrence
 import dev.glassclock.data.Alarm
 import dev.glassclock.data.Stores
 import dev.glassclock.ui.glass.DaySelector
@@ -47,6 +47,8 @@ import dev.glassclock.ui.glass.GlassIconButton
 import dev.glassclock.ui.glass.GlassSwitch
 import dev.glassclock.ui.glass.GlassTextField
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.LocalPrompt
+import dev.glassclock.ui.glass.PromptSpec
 import dev.glassclock.ui.glass.SectionLabel
 import dev.glassclock.ui.glass.SettingRow
 import dev.glassclock.ui.glass.WheelPicker
@@ -55,15 +57,18 @@ import dev.glassclock.util.formatUntil
 import java.time.LocalTime
 
 @Composable
-fun AlarmEditScreen(alarmId: Int?, contentPadding: PaddingValues, onClose: () -> Unit) {
+fun AlarmEditScreen(alarmId: Int?, groupId: Int?, contentPadding: PaddingValues, onClose: () -> Unit) {
     val context = LocalContext.current
     val p = LocalGlass.current
     val existing = remember(alarmId) { alarmId?.let { Alarms.get(it) } }
     var draft by remember(alarmId) {
         val now = LocalTime.now()
-        mutableStateOf(existing ?: Alarm(id = Alarms.newId(), hour = now.hour, minute = now.minute))
+        mutableStateOf(existing ?: Alarm(id = Alarms.newId(), hour = now.hour, minute = now.minute, groupId = groupId))
     }
     val settings by Stores.settings.state.collectAsStateWithLifecycle()
+    val groups by Stores.groups.state.collectAsStateWithLifecycle()
+    val showPrompt = LocalPrompt.current
+    val draftGroup = groups.firstOrNull { it.id == draft.groupId }
     val pickRingtone = rememberRingtonePicker { draft = draft.copy(ringtoneUri = it) }
     val now by rememberNow(1000)
 
@@ -104,8 +109,13 @@ fun AlarmEditScreen(alarmId: Int?, contentPadding: PaddingValues, onClose: () ->
                 WheelPicker(60, draft.minute, { draft = draft.copy(minute = it) })
             }
             val preview = draft.copy(enabled = true, skippedOccurrence = null, snoozedUntil = null)
+            val at = preview.nextOccurrence(now).toInstant().toEpochMilli()
             Text(
-                "Sonará en " + formatUntil((preview.nextTrigger(now) ?: now) - now),
+                if (draftGroup?.enabled == false) {
+                    "El grupo «${draftGroup.name}» está desactivado: no sonará hasta que lo actives"
+                } else {
+                    "Sonará en " + formatUntil(at - now)
+                },
                 Modifier.fillMaxWidth().padding(top = 8.dp),
                 color = p.contentSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -120,6 +130,33 @@ fun AlarmEditScreen(alarmId: Int?, contentPadding: PaddingValues, onClose: () ->
                 Modifier.padding(top = 10.dp, start = 4.dp),
                 fontSize = 13.sp,
                 color = p.contentSecondary,
+            )
+        }
+
+        SectionLabel("Grupo")
+        GlassCard {
+            ChipRow(
+                options = listOf<Int?>(null) + groups.map { it.id } + NEW_GROUP,
+                selected = draft.groupId,
+                label = { id ->
+                    when (id) {
+                        null -> "Sin grupo"
+                        NEW_GROUP -> "+ Nuevo"
+                        else -> groups.firstOrNull { it.id == id }?.name ?: "?"
+                    }
+                },
+                onSelect = { id ->
+                    if (id == NEW_GROUP) {
+                        showPrompt(
+                            PromptSpec(title = "Nuevo grupo", confirmLabel = "Crear", placeholder = "Nombre del grupo") {
+                                val created = Alarms.createGroup(it.ifBlank { "Grupo ${groups.size + 1}" })
+                                draft = draft.copy(groupId = created)
+                            },
+                        )
+                    } else {
+                        draft = draft.copy(groupId = id)
+                    }
+                },
             )
         }
 
@@ -212,6 +249,9 @@ fun AlarmEditScreen(alarmId: Int?, contentPadding: PaddingValues, onClose: () ->
         Spacer(Modifier.height(24.dp))
     }
 }
+
+/** Opción "+ Nuevo" del selector de grupo. */
+private const val NEW_GROUP = -1
 
 @Composable
 fun <T> ChipRow(

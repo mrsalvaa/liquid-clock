@@ -1,10 +1,6 @@
 package dev.glassclock.ui.glass
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -22,7 +18,16 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -126,6 +131,9 @@ val COLOR_SETS = listOf(
 )
 
 val LocalGlass = staticCompositionLocalOf { DarkGlass }
+
+/** false en las pestañas ocultas: sirve para pausar lo que se refresca en cada fotograma. */
+val LocalTabActive = compositionLocalOf { true }
 /** Lo que refractan las superficies de cristal: el fondo, o el fondo más el contenido. */
 val LocalBackdrop = staticCompositionLocalOf<Backdrop> { error("Falta GlassRoot") }
 
@@ -199,13 +207,20 @@ fun GlassRoot(
 @Composable
 fun LiquidBackground(modifier: Modifier = Modifier, animated: Boolean = true) {
     val p = LocalGlass.current
-    val transition = rememberInfiniteTransition(label = "bg")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(90_000, easing = LinearEasing)),
-        label = "phase",
-    )
+    // Las manchas se mueven tan despacio (una vuelta cada 90 s) que basta con moverlas ~15 veces
+    // por segundo. Animarlas a la frecuencia de la pantalla obligaría a redibujar todo el cristal
+    // en cada fotograma (120 veces por segundo) aunque no se toque nada.
+    var phase by remember { mutableFloatStateOf(0.8f) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(animated, lifecycle) {
+        if (!animated) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                phase = (SystemClock.uptimeMillis() % 90_000L) / 90_000f * (2 * PI).toFloat()
+                delay(66)
+            }
+        }
+    }
     // En movimiento las manchas pasan por el centro y se notan más: van más tenues.
     val alpha = when {
         p.dark && animated -> 0.2f

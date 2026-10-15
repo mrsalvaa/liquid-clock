@@ -24,6 +24,17 @@ data class Alarm(
     val skippedOccurrence: Long? = null,
     val snoozedUntil: Long? = null,
     val snoozeCount: Int = 0,
+    /** Grupo al que pertenece, o null. */
+    val groupId: Int? = null,
+)
+
+/** Grupo de alarmas: su interruptor apaga todas sin tocar el interruptor de cada una. */
+@Serializable
+data class AlarmGroup(
+    val id: Int,
+    val name: String,
+    val enabled: Boolean = true,
+    val collapsed: Boolean = false,
 )
 
 @Serializable

@@ -20,6 +20,7 @@ Inspired by Samsung's clock app, built for personal use and released under GPL-3
 - **Pick the snooze length while the alarm is ringing**: quick chips (5/10/15/30) and fine-tuning with −/+ from 1 to 120 min.
 - Volume buttons snooze (can be turned off).
 - Skip only the next occurrence of a repeating alarm.
+- Alarm groups: collapsible, with a switch that turns all their alarms on or off at once.
 - Auto-silence after N minutes (snoozes if possible).
 - Full-screen alarm over the lock screen.
 

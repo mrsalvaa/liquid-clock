@@ -18,6 +18,7 @@ Inspirado en el reloj de Samsung, pensado para uso personal y publicado bajo GPL
 - **Mientras suena puedes elegir cuánto posponer**: chips rápidos (5/10/15/30) y ajuste fino con −/+ de 1 a 120 min.
 - Los botones de volumen posponen (desactivable).
 - Omitir solo la próxima ocurrencia de una alarma que se repite.
+- Grupos de alarmas: plegables y con un interruptor que enciende o apaga todas sus alarmas a la vez.
 - Silencio automático tras N minutos (pospone si se puede).
 - Pantalla completa sobre la pantalla de bloqueo.
 

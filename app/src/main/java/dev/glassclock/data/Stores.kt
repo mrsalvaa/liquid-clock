@@ -50,6 +50,7 @@ class JsonStore<T>(
 
 object Stores {
     lateinit var alarms: JsonStore<List<Alarm>>
+    lateinit var groups: JsonStore<List<AlarmGroup>>
     lateinit var timers: JsonStore<List<TimerItem>>
     lateinit var presets: JsonStore<List<TimerPreset>>
     lateinit var cities: JsonStore<List<String>>
@@ -63,6 +64,7 @@ object Stores {
         if (initialized) return
         val dir = context.filesDir
         alarms = JsonStore(File(dir, "alarms.json"), ListSerializer(Alarm.serializer()), emptyList())
+        groups = JsonStore(File(dir, "groups.json"), ListSerializer(AlarmGroup.serializer()), emptyList())
         timers = JsonStore(File(dir, "timers.json"), ListSerializer(TimerItem.serializer()), emptyList())
         presets = JsonStore(File(dir, "presets.json"), ListSerializer(TimerPreset.serializer()), emptyList())
         cities = JsonStore(File(dir, "cities.json"), ListSerializer(String.serializer()), emptyList())

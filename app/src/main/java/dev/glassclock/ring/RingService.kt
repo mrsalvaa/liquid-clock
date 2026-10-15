@@ -23,6 +23,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import dev.glassclock.R
 import dev.glassclock.alarm.Alarms
+import dev.glassclock.alarm.isActive
 import dev.glassclock.data.Stores
 import dev.glassclock.timer.Timers
 import dev.glassclock.util.Notif
@@ -124,7 +125,7 @@ class RingService : Service() {
     private fun startAlarm(id: Int) {
         // Hay que pasar a primer plano sí o sí tras startForegroundService.
         if (_current.value == null) enterForeground(basicNotification())
-        val alarm = Alarms.get(id)?.takeIf { it.enabled } ?: return
+        val alarm = Alarms.get(id)?.takeIf { it.isActive } ?: return
         _current.value?.let { replacePrevious(it) }
         Alarms.onFired(this, id)
         val left = if (alarm.snoozeMaxCount == 0) null else alarm.snoozeMaxCount - alarm.snoozeCount

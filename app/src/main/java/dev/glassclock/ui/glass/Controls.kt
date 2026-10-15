@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.input.ImeAction
@@ -398,6 +399,10 @@ fun BoxScope.PromptHost(spec: PromptSpec?, onDismiss: () -> Unit) {
         // Cada apertura es un PromptSpec nuevo: el texto empieza vacío.
         var text by remember(s) { mutableStateOf("") }
         val focus = remember { FocusRequester() }
+        val confirm = {
+            onDismiss()
+            s.onConfirm(text.trim())
+        }
         LaunchedEffect(s) { focus.requestFocus() }
         GlassSurface(
             Modifier.fillMaxWidth(),
@@ -416,6 +421,7 @@ fun BoxScope.PromptHost(spec: PromptSpec?, onDismiss: () -> Unit) {
                     { text = it },
                     s.placeholder,
                     focusRequester = focus,
+                    keyboardActions = KeyboardActions(onDone = { confirm() }),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
                         imeAction = ImeAction.Done,
@@ -425,10 +431,7 @@ fun BoxScope.PromptHost(spec: PromptSpec?, onDismiss: () -> Unit) {
                     GlassButton("Cancelar", onDismiss, Modifier.weight(1f))
                     GlassButton(
                         s.confirmLabel,
-                        {
-                            onDismiss()
-                            s.onConfirm(text.trim())
-                        },
+                        confirm,
                         Modifier.weight(1f),
                         prominent = true,
                     )

@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -306,6 +307,7 @@ fun GlassTextField(
     textStyle: TextStyle? = null,
     singleLine: Boolean = true,
     focusRequester: FocusRequester? = null,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     val p = LocalGlass.current
     val style = textStyle ?: TextStyle(fontSize = 17.sp)
@@ -321,6 +323,7 @@ fun GlassTextField(
                 textStyle = style.copy(color = p.content),
                 cursorBrush = SolidColor(p.accent),
                 keyboardOptions = keyboardOptions,
+                keyboardActions = keyboardActions,
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),

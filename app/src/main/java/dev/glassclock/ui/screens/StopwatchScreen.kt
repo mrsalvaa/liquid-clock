@@ -43,6 +43,7 @@ import dev.glassclock.ui.glass.GlassButton
 import dev.glassclock.ui.glass.GlassCard
 import dev.glassclock.ui.glass.GlassSurface
 import dev.glassclock.ui.glass.LocalGlass
+import dev.glassclock.ui.glass.LocalTabActive
 import dev.glassclock.ui.glass.ScreenTitle
 import dev.glassclock.util.formatStopwatch
 
@@ -71,9 +72,10 @@ fun StopwatchScreen(contentPadding: PaddingValues) {
     val p = LocalGlass.current
     val data by Stores.stopwatch.state.collectAsStateWithLifecycle()
     var nowRt by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
-    LaunchedEffect(data.running) {
+    val visible = LocalTabActive.current
+    LaunchedEffect(data.running, visible) {
         nowRt = SystemClock.elapsedRealtime()
-        while (data.running) withFrameMillis { nowRt = SystemClock.elapsedRealtime() }
+        while (data.running && visible) withFrameMillis { nowRt = SystemClock.elapsedRealtime() }
     }
     val elapsed = data.elapsed(nowRt)
     val lapTimes = remember(data.laps) {

@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import dev.glassclock.MainActivity
 import dev.glassclock.R
 import dev.glassclock.data.Alarm
+import dev.glassclock.data.AlarmGroup
 import dev.glassclock.data.Stores
 import dev.glassclock.util.Notif
 import dev.glassclock.util.formatInstantClock
@@ -28,9 +29,15 @@ fun Alarm.nextOccurrence(nowMs: Long = System.currentTimeMillis()): ZonedDateTim
     return next
 }
 
+/** Su grupo, si tiene. */
+val Alarm.group: AlarmGroup? get() = groupId?.let { id -> Stores.groups.value.firstOrNull { it.id == id } }
+
+/** Activa y en un grupo activo (o sin grupo): solo entonces suena. */
+val Alarm.isActive: Boolean get() = enabled && group?.enabled != false
+
 /** Próximo disparo (pospuesta o regular), o null si está desactivada. */
 fun Alarm.nextTrigger(nowMs: Long = System.currentTimeMillis()): Long? {
-    if (!enabled) return null
+    if (!isActive) return null
     snoozedUntil?.let { if (it > nowMs) return it }
     return nextOccurrence(nowMs).toInstant().toEpochMilli()
 }
@@ -115,6 +122,61 @@ object Alarms {
         update(updated)
         cancelSnoozeNotification(context, id)
         schedule(context, updated)
+    }
+
+    // --- Grupos ---
+
+    fun groupOf(id: Int): AlarmGroup? = Stores.groups.value.firstOrNull { it.id == id }
+
+    fun createGroup(name: String): Int {
+        var newId = 0
+        Stores.groups.update { list ->
+            newId = (list.maxOfOrNull { it.id } ?: 0) + 1
+            list + AlarmGroup(newId, name)
+        }
+        return newId
+    }
+
+    fun renameGroup(id: Int, name: String) {
+        Stores.groups.update { list -> list.map { if (it.id == id) it.copy(name = name) else it } }
+    }
+
+    fun setGroupCollapsed(id: Int, collapsed: Boolean) {
+        Stores.groups.update { list -> list.map { if (it.id == id) it.copy(collapsed = collapsed) else it } }
+    }
+
+    /** Enciende o apaga el grupo; cada alarma conserva su propio interruptor. */
+    fun setGroupEnabled(context: Context, id: Int, enabled: Boolean) {
+        Stores.groups.update { list -> list.map { if (it.id == id) it.copy(enabled = enabled) else it } }
+        Stores.alarms.update { list ->
+            list.map {
+                // Al apagar el grupo se olvidan las pospuestas y omitidas de sus alarmas.
+                if (it.groupId == id && !enabled) it.copy(snoozedUntil = null, snoozeCount = 0, skippedOccurrence = null)
+                else it
+            }
+        }
+        Stores.alarms.value.filter { it.groupId == id }.forEach {
+            cancelSnoozeNotification(context, it.id)
+            schedule(context, it)
+        }
+    }
+
+    /** Elimina el grupo; sus alarmas se borran o pasan a "sin grupo". */
+    fun deleteGroup(context: Context, id: Int, deleteAlarms: Boolean) {
+        val members = Stores.alarms.value.filter { it.groupId == id }
+        if (deleteAlarms) {
+            members.forEach { delete(context, it.id) }
+        } else {
+            Stores.alarms.update { list -> list.map { if (it.groupId == id) it.copy(groupId = null) else it } }
+        }
+        Stores.groups.update { list -> list.filterNot { it.id == id } }
+        // Sin el grupo apagado, las que quedan pueden volver a sonar.
+        if (!deleteAlarms) members.forEach { get(it.id)?.let { a -> schedule(context, a) } }
+    }
+
+    fun moveToGroup(context: Context, alarmId: Int, groupId: Int?) {
+        val alarm = get(alarmId) ?: return
+        save(context, alarm.copy(groupId = groupId))
     }
 
     fun rescheduleAll(context: Context) {

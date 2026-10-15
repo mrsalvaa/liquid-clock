@@ -7,6 +7,21 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CreateNewFolder
+import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.FolderOff
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.rotate
+import dev.glassclock.data.AlarmGroup
+import dev.glassclock.ui.glass.LocalPrompt
+import dev.glassclock.ui.glass.PromptSpec
+import dev.glassclock.ui.glass.SectionLabel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +34,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AlarmOff
@@ -72,16 +86,43 @@ import java.time.ZoneId
 @Composable
 fun AlarmListScreen(
     contentPadding: PaddingValues,
-    onEdit: (Int?) -> Unit,
+    onEdit: (Int) -> Unit,
+    onNew: (groupId: Int?) -> Unit,
     onSettings: () -> Unit,
 ) {
     val context = LocalContext.current
     val alarms by Stores.alarms.state.collectAsStateWithLifecycle()
+    val groups by Stores.groups.state.collectAsStateWithLifecycle()
     val now by rememberNow(30_000)
     val is24 = is24h(context)
     val sorted = remember(alarms) { alarms.sortedBy { it.hour * 60 + it.minute } }
-    val next = alarms.mapNotNull { it.nextTrigger(now) }.minOrNull()
+    // nextTrigger consulta el estado de los grupos: hay que recalcular también cuando cambian.
+    val next = remember(alarms, groups, now) { alarms.mapNotNull { it.nextTrigger(now) }.minOrNull() }
     val showSheet = LocalActionSheet.current
+    val showPrompt = LocalPrompt.current
+    val newGroup = {
+        showPrompt(
+            PromptSpec(title = "Nuevo grupo", confirmLabel = "Crear", placeholder = "Nombre del grupo") { name ->
+                Alarms.createGroup(name.ifBlank { "Grupo ${groups.size + 1}" })
+            },
+        )
+    }
+    val alarmCard: LazyListScope.(Alarm, Boolean) -> Unit = { alarm, nested ->
+        item(key = "a${alarm.id}") {
+            AlarmCard(
+                alarm = alarm,
+                active = alarm.enabled && groups.firstOrNull { it.id == alarm.groupId }?.enabled != false,
+                now = now,
+                is24 = is24,
+                modifier = if (nested) Modifier.padding(start = 16.dp) else Modifier,
+                onClick = { onEdit(alarm.id) },
+                onLongClick = {
+                    showSheet(alarmMenu(context, alarm, now, is24, showSheet, showPrompt) { onEdit(alarm.id) })
+                },
+                onToggle = { Alarms.setEnabled(context, alarm.id, it) },
+            )
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
@@ -99,13 +140,14 @@ fun AlarmListScreen(
                     } ?: "Ninguna alarma activa",
                 ) {
                     GlassIconButton(Icons.Rounded.Settings, "Ajustes", onSettings)
-                    GlassIconButton(Icons.Rounded.Add, "Nueva alarma", { onEdit(null) }, prominent = true)
+                    GlassIconButton(Icons.Rounded.CreateNewFolder, "Nuevo grupo", newGroup)
+                    GlassIconButton(Icons.Rounded.Add, "Nueva alarma", { onNew(null) }, prominent = true)
                 }
             }
             item { PermissionBanner() }
-            if (sorted.isEmpty()) {
+            if (sorted.isEmpty() && groups.isEmpty()) {
                 item {
-                    GlassCard(onClick = { onEdit(null) }) {
+                    GlassCard(onClick = { onNew(null) }) {
                         Text("Sin alarmas", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                         Text(
                             "Toca aquí o el botón + para crear la primera.",
@@ -114,16 +156,26 @@ fun AlarmListScreen(
                     }
                 }
             }
-            items(sorted, key = { it.id }) { alarm ->
-                AlarmCard(
-                    alarm = alarm,
-                    now = now,
-                    is24 = is24,
-                    onClick = { onEdit(alarm.id) },
-                    onLongClick = { showSheet(alarmMenu(context, alarm, now, is24) { onEdit(alarm.id) }) },
-                    onToggle = { Alarms.setEnabled(context, alarm.id, it) },
-                )
+            groups.forEach { group ->
+                val members = sorted.filter { it.groupId == group.id }
+                item(key = "g${group.id}") {
+                    GroupCard(
+                        group = group,
+                        members = members,
+                        now = now,
+                        is24 = is24,
+                        onLongClick = {
+                            showSheet(groupMenu(context, group, members.size, showPrompt) { onNew(group.id) })
+                        },
+                    )
+                }
+                if (!group.collapsed) members.forEach { alarmCard(it, true) }
             }
+            val loose = sorted.filter { a -> a.groupId == null || groups.none { it.id == a.groupId } }
+            if (groups.isNotEmpty() && loose.isNotEmpty()) {
+                item(key = "loose") { SectionLabel("Sin grupo") }
+            }
+            loose.forEach { alarmCard(it, false) }
         }
     }
 }
@@ -131,17 +183,19 @@ fun AlarmListScreen(
 @Composable
 private fun AlarmCard(
     alarm: Alarm,
+    active: Boolean,
     now: Long,
     is24: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val p = LocalGlass.current
-    val dim = if (alarm.enabled) 1f else 0.45f
+    val dim = if (active) 1f else 0.45f
     val (time, suffix) = formatClock(alarm.hour, alarm.minute, is24)
-    val status = alarmStatus(alarm, now, is24)
-    GlassCard(onClick = onClick, onLongClick = onLongClick) {
+    val status = alarmStatus(alarm, active, now, is24)
+    GlassCard(modifier, onClick = onClick, onLongClick = onLongClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 if (alarm.label.isNotBlank()) {
@@ -175,7 +229,15 @@ private fun AlarmCard(
     }
 }
 
-private fun alarmMenu(context: Context, alarm: Alarm, now: Long, is24: Boolean, onEdit: () -> Unit): SheetSpec {
+private fun alarmMenu(
+    context: Context,
+    alarm: Alarm,
+    now: Long,
+    is24: Boolean,
+    showSheet: (SheetSpec) -> Unit,
+    showPrompt: (PromptSpec) -> Unit,
+    onEdit: () -> Unit,
+): SheetSpec {
     val (time, suffix) = formatClock(alarm.hour, alarm.minute, is24)
     val skipped = alarm.skippedOccurrence?.let { it > now } == true
     return SheetSpec(
@@ -198,14 +260,146 @@ private fun alarmMenu(context: Context, alarm: Alarm, now: Long, is24: Boolean, 
                     ) { if (skipped) Alarms.unskip(context, alarm.id) else Alarms.skipNext(context, alarm.id) },
                 )
             }
+            add(
+                SheetAction("Mover a grupo", Icons.AutoMirrored.Rounded.DriveFileMove) {
+                    showSheet(moveMenu(context, alarm, showPrompt))
+                },
+            )
             add(SheetAction("Duplicar", Icons.Rounded.ContentCopy) { Alarms.duplicate(context, alarm.id) })
             add(SheetAction("Eliminar", Icons.Rounded.Delete, danger = true) { Alarms.delete(context, alarm.id) })
         },
     )
 }
 
+private fun moveMenu(context: Context, alarm: Alarm, showPrompt: (PromptSpec) -> Unit): SheetSpec =
+    SheetSpec(
+        title = "Mover a grupo",
+        actions = buildList {
+            add(
+                SheetAction(
+                    "Sin grupo",
+                    if (alarm.groupId == null) Icons.Rounded.Check else Icons.Rounded.FolderOff,
+                ) { Alarms.moveToGroup(context, alarm.id, null) },
+            )
+            Stores.groups.value.forEach { g ->
+                add(
+                    SheetAction(g.name, if (alarm.groupId == g.id) Icons.Rounded.Check else Icons.Rounded.Folder) {
+                        Alarms.moveToGroup(context, alarm.id, g.id)
+                    },
+                )
+            }
+            add(
+                SheetAction("Nuevo grupo", Icons.Rounded.CreateNewFolder) {
+                    showPrompt(
+                        PromptSpec(title = "Nuevo grupo", confirmLabel = "Crear y mover", placeholder = "Nombre del grupo") {
+                            val id = Alarms.createGroup(it.ifBlank { "Grupo ${Stores.groups.value.size + 1}" })
+                            Alarms.moveToGroup(context, alarm.id, id)
+                        },
+                    )
+                },
+            )
+        },
+    )
+
+private fun groupMenu(
+    context: Context,
+    group: AlarmGroup,
+    count: Int,
+    showPrompt: (PromptSpec) -> Unit,
+    onNewInGroup: () -> Unit,
+): SheetSpec = SheetSpec(
+    title = group.name,
+    subtitle = alarmCount(count),
+    actions = buildList {
+        add(SheetAction("Nueva alarma en el grupo", Icons.Rounded.Add, onClick = onNewInGroup))
+        add(
+            SheetAction(
+                if (group.enabled) "Desactivar grupo" else "Activar grupo",
+                if (group.enabled) Icons.Rounded.AlarmOff else Icons.Rounded.AlarmOn,
+            ) { Alarms.setGroupEnabled(context, group.id, !group.enabled) },
+        )
+        add(
+            SheetAction("Renombrar", Icons.Rounded.Edit) {
+                showPrompt(
+                    PromptSpec(
+                        title = "Renombrar grupo",
+                        subtitle = group.name,
+                        confirmLabel = "Guardar",
+                        placeholder = "Nombre del grupo",
+                    ) { if (it.isNotBlank()) Alarms.renameGroup(group.id, it) },
+                )
+            },
+        )
+        if (count > 0) {
+            add(SheetAction("Eliminar grupo y conservar alarmas", Icons.Rounded.FolderOff) {
+                Alarms.deleteGroup(context, group.id, deleteAlarms = false)
+            })
+            add(SheetAction("Eliminar grupo y sus alarmas", Icons.Rounded.Delete, danger = true) {
+                Alarms.deleteGroup(context, group.id, deleteAlarms = true)
+            })
+        } else {
+            add(SheetAction("Eliminar grupo", Icons.Rounded.Delete, danger = true) {
+                Alarms.deleteGroup(context, group.id, deleteAlarms = false)
+            })
+        }
+    },
+)
+
+private fun alarmCount(n: Int) = when (n) {
+    0 -> "Sin alarmas"
+    1 -> "1 alarma"
+    else -> "$n alarmas"
+}
+
+/** Cabecera de un grupo: tocar pliega o despliega, el interruptor apaga todas sus alarmas. */
+@Composable
+private fun GroupCard(
+    group: AlarmGroup,
+    members: List<Alarm>,
+    now: Long,
+    is24: Boolean,
+    onLongClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    val p = LocalGlass.current
+    val rotation by animateFloatAsState(if (group.collapsed) -90f else 0f, label = "chevron")
+    val next = members.mapNotNull { it.nextTrigger(now) }.minOrNull()
+    val summary = when {
+        !group.enabled -> alarmCount(members.size) + " · desactivado"
+        next != null -> alarmCount(members.size) + " · próxima " +
+            relativeDay(Instant.ofEpochMilli(next).atZone(ZoneId.systemDefault())).lowercase() +
+            " a las " + formatInstantClock(next, is24)
+        else -> alarmCount(members.size)
+    }
+    GlassCard(
+        onClick = { Alarms.setGroupCollapsed(group.id, !group.collapsed) },
+        onLongClick = onLongClick,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Rounded.ExpandMore,
+                if (group.collapsed) "Desplegar" else "Plegar",
+                Modifier.size(28.dp).rotate(rotation),
+                tint = p.contentSecondary,
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    group.name,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = p.content.copy(alpha = if (group.enabled) 1f else 0.5f),
+                )
+                Text(summary, fontSize = 13.sp, color = p.contentSecondary)
+            }
+            GlassSwitch(group.enabled, { Alarms.setGroupEnabled(context, group.id, it) })
+        }
+    }
+}
+
 /** Texto bajo la hora y si debe resaltarse. */
-private fun alarmStatus(alarm: Alarm, now: Long, is24: Boolean): Pair<String, Boolean> {
+private fun alarmStatus(alarm: Alarm, active: Boolean, now: Long, is24: Boolean): Pair<String, Boolean> {
+    if (alarm.enabled && !active) return "Grupo desactivado" to false
     if (alarm.enabled) {
         alarm.snoozedUntil?.takeIf { it > now }?.let {
             return "Pospuesta hasta las ${formatInstantClock(it, is24)}" to true
