@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.delay
@@ -269,16 +270,28 @@ fun GlassNavBar(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    /** Posición mientras se desliza entre pestañas (p. ej. 1,4); la burbuja sigue al dedo. */
-    dragPosition: Float? = null,
+    /**
+     * Posición mientras se desliza entre pestañas (p. ej. 1,4), o null. Es una función para leerla
+     * sin recomponer la pantalla en cada fotograma del arrastre.
+     */
+    dragPosition: () -> Float? = { null },
 ) {
     val p = LocalGlass.current
-    // Al tocar, salta con rebote; al deslizar entre pestañas, sigue al dedo.
-    val animated by animateFloatAsState(
-        selected.toFloat(),
-        spring(dampingRatio = 0.62f, stiffness = 420f),
-        label = "bubble",
-    )
+    // Una sola posición para la burbuja: sigue al dedo al deslizar y, al soltar o al tocar una
+    // pestaña, continúa desde donde está hasta la pestaña elegida (sin volver a la anterior).
+    val bubble = remember { Animatable(selected.toFloat()) }
+    val target by rememberUpdatedState(selected)
+    val bounce = spring<Float>(dampingRatio = 0.62f, stiffness = 420f)
+    // El resaltado sigue a la burbuja (la pestaña más cercana), no al final de la animación.
+    val highlighted by remember { derivedStateOf { bubble.value.roundToInt() } }
+    LaunchedEffect(Unit) {
+        snapshotFlow { dragPosition() }.collectLatest { drag ->
+            if (drag != null) bubble.snapTo(drag) else bubble.animateTo(target.toFloat(), bounce)
+        }
+    }
+    LaunchedEffect(selected) {
+        if (dragPosition() == null) bubble.animateTo(selected.toFloat(), bounce)
+    }
     GlassSurface(
         modifier.fillMaxWidth().height(70.dp),
         shape = CircleShape,
@@ -289,7 +302,7 @@ fun GlassNavBar(
             val itemWidth = maxWidth / items.size
             Box(
                 Modifier
-                    .offset { IntOffset((itemWidth * (dragPosition ?: animated)).roundToPx(), 0) }
+                    .offset { IntOffset((itemWidth * bubble.value).roundToPx(), 0) }
                     .width(itemWidth)
                     .fillMaxHeight()
                     .clip(CircleShape)
@@ -298,7 +311,7 @@ fun GlassNavBar(
             )
             Row(Modifier.fillMaxSize()) {
                 items.forEachIndexed { i, item ->
-                    val active = i == selected
+                    val active = i == highlighted
                     Column(
                         Modifier
                             .weight(1f)

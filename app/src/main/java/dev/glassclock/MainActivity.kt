@@ -211,7 +211,7 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
                             NavItem("Mundial", Icons.Rounded.Public),
                         ),
                         selected = tab,
-                        dragPosition = tabDrag,
+                        dragPosition = { tabDrag },
                         onSelect = { tab = it },
                         modifier = Modifier
                             .navigationBarsPadding()
