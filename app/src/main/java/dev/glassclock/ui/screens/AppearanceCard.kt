@@ -35,16 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import dev.glassclock.data.AppSettings
-import dev.glassclock.ui.glass.ACCENT_HUES
-import dev.glassclock.ui.glass.COLOR_SETS
 import dev.glassclock.ui.glass.GlassCard
 import dev.glassclock.ui.glass.GlassSwitch
 import dev.glassclock.ui.glass.LocalGlass
-import dev.glassclock.ui.glass.muted
 import dev.glassclock.ui.glass.SettingRow
 import dev.glassclock.util.AppIcons
-
-private fun Color.argb(): Long = toArgb().toLong() and 0xFFFFFFFFL
 
 @Composable
 fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit) {
@@ -54,65 +49,6 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
         Label("Tema")
         ChipRow(listOf(0, 1, 2), s.themeMode, { listOf("Sistema", "Claro", "Oscuro")[it] }) { v ->
             edit { it.copy(themeMode = v) }
-        }
-
-        Label("Fondo")
-        ChipRow(listOf(0, 1), s.backgroundMode, { listOf("En movimiento", "Color de énfasis")[it] }) { v ->
-            edit { it.copy(backgroundMode = v) }
-        }
-
-        if (s.backgroundMode == 0) {
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                COLOR_SETS.forEachIndexed { i, set ->
-                    val blobs = if (p.dark) set.darkBlobs else set.lightBlobs
-                    Swatch(
-                        brush = Brush.linearGradient(listOf(blobs[0], blobs[1])),
-                        selected = s.colorSet == i,
-                        label = set.name,
-                        modifier = Modifier.weight(1f),
-                    ) { edit { it.copy(colorSet = i) } }
-                }
-            }
-            SettingRow("Fondo animado", subtitle = "Desactívalo para ahorrar batería") {
-                GlassSwitch(s.animatedBackground, { v -> edit { it.copy(animatedBackground = v) } })
-            }
-        } else {
-            val hueIndex = ACCENT_HUES.indexOfFirst { h -> h.tones.any { it.argb() == s.accentColor } }.coerceAtLeast(0)
-            // Los 10 colores en dos filas de 5, todos a la vista.
-            ACCENT_HUES.chunked(5).forEachIndexed { row, hues ->
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                    hues.forEachIndexed { col, hue ->
-                        val i = row * 5 + col
-                        Swatch(
-                            brush = Brush.linearGradient(listOf(muted(hue.tones[0]), muted(hue.tones[2]))),
-                            selected = i == hueIndex,
-                            label = hue.name,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            // Al cambiar de color se queda con el mismo tono (claro, medio u oscuro).
-                            val tone = ACCENT_HUES[hueIndex].tones.indexOfFirst { it.argb() == s.accentColor }.coerceAtLeast(1)
-                            edit { it.copy(accentColor = hue.tones[tone].argb()) }
-                        }
-                    }
-                }
-            }
-            Label("Tono")
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                ACCENT_HUES[hueIndex].tones.forEachIndexed { t, tone ->
-                    Swatch(
-                        brush = Brush.linearGradient(listOf(muted(tone), muted(tone))),
-                        selected = tone.argb() == s.accentColor,
-                        label = listOf("Claro", "Medio", "Oscuro")[t],
-                        modifier = Modifier.width(62.dp),
-                    ) { edit { it.copy(accentColor = tone.argb()) } }
-                }
-            }
         }
 
         Label("Icono de la app")
@@ -141,39 +77,6 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
 @Composable
 private fun Label(text: String) {
     Text(text, Modifier.padding(top = 10.dp), fontSize = 16.sp, fontWeight = FontWeight.Medium)
-}
-
-@Composable
-private fun Swatch(
-    brush: Brush,
-    selected: Boolean,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val p = LocalGlass.current
-    Column(
-        modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            Modifier
-                .size(50.dp)
-                .border(2.dp, if (selected) p.content else Color.Transparent, CircleShape)
-                .padding(4.dp)
-                .clip(CircleShape)
-                .background(brush),
-        )
-        Text(
-            label,
-            Modifier.padding(top = 6.dp),
-            fontSize = 12.sp,
-            lineHeight = 14.sp,
-            textAlign = TextAlign.Center,
-            color = if (selected) p.content else p.contentSecondary,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        )
-    }
 }
 
 /** Vista previa de un icono adaptativo: fondo y primer plano recortados en forma de "squircle". */

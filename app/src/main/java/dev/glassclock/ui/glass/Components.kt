@@ -184,7 +184,7 @@ fun GlassIconButton(
         modifier.size(size).graphicsLayer { alpha = if (enabled) 1f else 0.4f },
         shape = CircleShape,
         strong = true,
-        tint = if (prominent) p.accent.copy(alpha = 0.6f) else null,
+        tint = if (prominent) p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f) else null,
         onClick = if (enabled) onClick else null,
     ) {
         Icon(
@@ -209,7 +209,7 @@ fun GlassButton(
     val p = LocalGlass.current
     val tint = when {
         danger -> p.danger.copy(alpha = 0.55f)
-        prominent -> p.accent.copy(alpha = 0.6f)
+        prominent -> p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f)
         else -> null
     }
     val textColor = when {
@@ -251,7 +251,7 @@ fun GlassChip(
     GlassSurface(
         modifier.height(40.dp),
         shape = shape,
-        tint = if (selected) p.accent.copy(alpha = 0.5f) else null,
+        tint = if (selected) p.accent.copy(alpha = if (p.dark) 0.5f else 0.92f) else null,
         frost = 4.dp,
         shadowRadius = 6.dp,
         onClick = onClick,

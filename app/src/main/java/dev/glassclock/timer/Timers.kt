@@ -134,8 +134,7 @@ object Timers {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val title = item.label.ifBlank { "Temporizador" }
-        val builder = NotificationCompat.Builder(context, Notif.CH_TIMER)
-            .setSmallIcon(R.drawable.ic_notification)
+        val builder = Notif.builder(context, Notif.CH_TIMER)
             .setContentTitle(title)
             .setOngoing(true)
             .setOnlyAlertOnce(true)

@@ -80,17 +80,10 @@ data class StopwatchData(
 data class AppSettings(
     val volumeKeysSnooze: Boolean = true,
     val autoSilenceMinutes: Int = 10,
-    val animatedBackground: Boolean = true,
-    /** Índice en COLOR_SETS. */
-    val colorSet: Int = 0,
     /** 0 = según el sistema, 1 = claro, 2 = oscuro. */
     val themeMode: Int = 0,
-    /** 0 = colores en movimiento (COLOR_SETS), 1 = color de énfasis. */
-    val backgroundMode: Int = 0,
-    /** Color de énfasis en ARGB, para backgroundMode = 1. */
-    val accentColor: Long = 0xFF0EA5E9,
-    /** Índice del icono de la app (ver AppIcons). */
-    val appIcon: Int = 0,
+    /** Índice del icono de la app (ver AppIcons). Por defecto Samsung, el icono base de la app. */
+    val appIcon: Int = 2,
     /** Notificación 2 h antes de cada alarma para poder descartarla. */
     val upcomingNotice: Boolean = true,
     /** Sonido de las alarmas que usan el predeterminado. null = el del sistema. */

@@ -342,8 +342,7 @@ class RingService : Service() {
     }
 
     private fun basicNotification(): Notification =
-        NotificationCompat.Builder(this, Notif.CH_RING)
-            .setSmallIcon(R.drawable.ic_notification)
+        Notif.builder(this, Notif.CH_RING)
             .setContentTitle(getString(R.string.app_name))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .build()
@@ -357,8 +356,7 @@ class RingService : Service() {
             this, code, intent(this, action, minutes = minutes),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val builder = NotificationCompat.Builder(this, Notif.CH_RING)
-            .setSmallIcon(R.drawable.ic_notification)
+        val builder = Notif.builder(this, Notif.CH_RING)
             .setContentTitle(state.label)
             .setContentText(if (state.kind == RingState.Kind.ALARM) "Sonando" else "Tiempo cumplido")
             .setCategory(NotificationCompat.CATEGORY_ALARM)

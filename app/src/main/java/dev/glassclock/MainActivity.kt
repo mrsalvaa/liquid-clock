@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
             val settings by Stores.settings.state.collectAsStateWithLifecycle()
             SystemBarsFor(isDarkTheme(settings.themeMode))
             GlassTheme(settings) {
-                App(settings.animatedBackground, requestedTab) { requestedTab = null }
+                App(requestedTab) { requestedTab = null }
             }
         }
     }
@@ -166,7 +166,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit) {
+private fun App(requestedTab: Int?, onTabConsumed: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(TAB_ALARM) }
     // Posición de la barra mientras se desliza entre pestañas (p. ej. 1,4), o null.
     var tabDrag by remember { mutableStateOf<Float?>(null) }
@@ -201,7 +201,6 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
         LocalPrompt provides { prompt = it },
     ) {
         GlassRoot(
-            animated = animated,
             floating = {
                 AnimatedVisibility(
                     overlay == null,
@@ -396,7 +395,9 @@ private fun SwipeTabs(
                     // Las pestañas ocultas se tragan los toques para que no lleguen a sus botones
                     // invisibles. Se decide al tocar: la vecina que está entrando sí los recibe, así
                     // se pueden encadenar deslizamientos rápidos sin esperar a que termine el anterior.
-                    .pointerInput(Unit) {
+                    // La clave [active] rehace el detector cuando cambia la pestaña activa: si no, se
+                    // quedaba con el valor del primer momento y bloqueaba la pestaña ya visible.
+                    .pointerInput(active) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                             if (visible()) return@awaitEachGesture

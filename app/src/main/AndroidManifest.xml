@@ -18,8 +18,8 @@
     <application
         android:name=".GlassClockApp"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_launcher_samsung"
+        android:roundIcon="@mipmap/ic_launcher_samsung"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.GlassClock">
@@ -33,7 +33,7 @@
         <!-- Un alias por icono de la app: solo uno está activo (ver AppIcons). -->
         <activity-alias
             android:name=".IconLiquid"
-            android:enabled="true"
+            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
             android:roundIcon="@mipmap/ic_launcher"
@@ -59,7 +59,7 @@
 
         <activity-alias
             android:name=".IconSamsung"
-            android:enabled="false"
+            android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_samsung"
             android:roundIcon="@mipmap/ic_launcher_samsung"

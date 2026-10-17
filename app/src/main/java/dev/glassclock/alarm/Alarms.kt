@@ -263,8 +263,7 @@ object Alarms {
         )
         val time = formatInstantClock(trigger, is24h(context))
         val day = relativeDay(Instant.ofEpochMilli(trigger).atZone(ZoneId.systemDefault()))
-        val n = NotificationCompat.Builder(context, Notif.CH_UPCOMING)
-            .setSmallIcon(R.drawable.ic_notification)
+        val n = Notif.builder(context, Notif.CH_UPCOMING)
             .setContentTitle("Próxima alarma: $time" + if (alarm.label.isNotBlank()) " · ${alarm.label}" else "")
             .setContentText(if (alarm.isRepeating) "$day. Descártala para saltar solo esta vez." else "$day.")
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
@@ -322,8 +321,7 @@ object Alarms {
             context, 0, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val n = NotificationCompat.Builder(context, Notif.CH_SNOOZE)
-            .setSmallIcon(R.drawable.ic_notification)
+        val n = Notif.builder(context, Notif.CH_SNOOZE)
             .setContentTitle(alarm.label.ifBlank { "Alarma" } + " pospuesta")
             .setContentText("Sonará a las ${formatInstantClock(until, is24h(context))}")
             .setOngoing(true)

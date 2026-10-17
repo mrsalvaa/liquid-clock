@@ -50,8 +50,7 @@ class BedtimeReceiver : BroadcastReceiver() {
             context, 0, Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val n = NotificationCompat.Builder(context, Notif.CH_BEDTIME)
-            .setSmallIcon(R.drawable.ic_notification)
+        val n = Notif.builder(context, Notif.CH_BEDTIME)
             .setContentTitle("Hora de dormir")
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
