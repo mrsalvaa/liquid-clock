@@ -204,6 +204,9 @@ val LocalGlass = staticCompositionLocalOf { DarkGlass }
 
 /** false en las pestañas ocultas: sirve para pausar lo que se refresca en cada fotograma. */
 val LocalTabActive = compositionLocalOf { true }
+/** true en la capa flotante (barra inferior, menús), que refracta también el contenido. */
+val LocalFloating = staticCompositionLocalOf { false }
+
 /** Lo que refractan las superficies de cristal: el fondo, o el fondo más el contenido. */
 val LocalBackdrop = staticCompositionLocalOf<Backdrop> { error("Falta GlassRoot") }
 
@@ -287,7 +290,7 @@ fun GlassRoot(
                 .windowInsetsTopHeight(WindowInsets.statusBars)
                 .background(Brush.verticalGradient(listOf(p.base, p.base.copy(alpha = 0.6f)))),
         )
-        CompositionLocalProvider(LocalBackdrop provides page) {
+        CompositionLocalProvider(LocalBackdrop provides page, LocalFloating provides true) {
             Box(Modifier.fillMaxSize(), content = floating)
         }
     }

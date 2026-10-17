@@ -96,6 +96,67 @@ fun GlassSurface(
     val surface = tint ?: if (strong) p.tintStrong else p.tint
     val clickable = onClick != null || onLongClick != null
 
+    val clickModifier = if (clickable) {
+        Modifier.combinedClickable(
+            interactionSource = interaction,
+            indication = null,
+            onClick = onClick ?: {},
+            onLongClick = onLongClick?.let {
+                {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    it()
+                }
+            },
+        )
+    } else {
+        Modifier
+    }
+
+    // Fondo liso o de énfasis (un brillo quieto y muy suave): refractarlo o desenfocarlo da lo
+    // mismo que no hacerlo, así que las superficies del contenido se dibujan sin efectos (mucho
+    // menos trabajo para la GPU) con el mismo aspecto. Lo que flota encima sí refracta, porque
+    // debajo pasa el contenido. "En movimiento" conserva todos los efectos.
+    if ((p.blobs.isEmpty() || p.accentGlow) && !LocalFloating.current) {
+        Box(
+            modifier
+                .graphicsLayer {
+                    scaleX = sx
+                    scaleY = sy
+                    this.shape = shape
+                    shadowElevation = shadowRadius.toPx() * 0.35f
+                    val shadowColor = Color.Black.copy(alpha = if (p.dark) 0.5f else 0.18f)
+                    ambientShadowColor = shadowColor
+                    spotShadowColor = shadowColor
+                }
+                .clip(shape)
+                .background(surface)
+                .drawBehind {
+                    drawRect(
+                        Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = p.highlight * 0.6f),
+                            0.5f to Color.Transparent,
+                        ),
+                    )
+                }
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        Brush.linearGradient(
+                            0f to Color.White.copy(alpha = p.rim * 0.7f),
+                            0.5f to Color.White.copy(alpha = p.rim * 0.12f),
+                            1f to Color.White.copy(alpha = p.rim * 0.35f),
+                        ),
+                    ),
+                    shape,
+                )
+                .then(clickModifier),
+            propagateMinConstraints = true,
+        ) {
+            Box(content = content)
+        }
+        return
+    }
+
     // El efecto de cristal no se entera de los cambios de color de su tinte: al cambiar de tema
     // (o de color de énfasis) se rehace la superficie para que no se quede con el tinte anterior.
     key(surface, p.dark) {
@@ -126,23 +187,7 @@ fun GlassSurface(
                 },
                 onDrawSurface = { drawRect(surface) },
             )
-            .then(
-                if (clickable) {
-                    Modifier.combinedClickable(
-                        interactionSource = interaction,
-                        indication = null,
-                        onClick = onClick ?: {},
-                        onLongClick = onLongClick?.let {
-                            {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                it()
-                            }
-                        },
-                    )
-                } else {
-                    Modifier
-                },
-            ),
+            .then(clickModifier),
         propagateMinConstraints = true,
     ) {
         Box(

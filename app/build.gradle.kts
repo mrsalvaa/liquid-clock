@@ -54,6 +54,15 @@ android {
             )
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
+        // Como la release (optimizada, sin depuración) pero instalable junto a ella como
+        // dev.glassclock.debug: para probar en el móvil con el rendimiento real.
+        create("profile") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-profile"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {
