@@ -2,6 +2,22 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 0.4.1
+
+### Novedades
+- Fondo *Liso*, ahora el predeterminado: fondo plano con acento azul, más claro en tema oscuro y más intenso en tema claro. Siguen disponibles los fondos *En movimiento* y *Color de énfasis*.
+- El icono de estilo Samsung pasa a ser el icono por defecto de la app. Las notificaciones también lo muestran, junto con el azul del tema.
+
+### Mejoras
+- Mucho más fluida con los fondos *Liso* y *Color de énfasis*. Sobre un fondo plano o casi plano los efectos de cristal se ven igual sin refracción ni desenfoque, así que tarjetas, botones y chips ya no los calculan. La barra inferior y los menús siguen refractando el contenido que pasa por debajo. En un Galaxy S24 FE, el peor fotograma al cambiar de pestaña pasó de 40 ms a 15 ms.
+- En tema claro, los botones azules y los chips seleccionados son más opacos y su texto se lee mejor.
+
+### Correcciones
+- Deslizar entre pestañas podía dejar de funcionar al empujar más allá de la primera pestaña (Alarmas), igual que pasaba en la última.
+
+### Para desarrolladores
+- Nuevo tipo de compilación `profile`: optimizada como la release, pero se instala como `dev.glassclock.debug` para probar con el rendimiento real.
+
 ## 0.2.4
 
 ### Correcciones

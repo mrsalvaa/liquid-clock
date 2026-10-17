@@ -2,6 +2,22 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## 0.4.1
+
+### New
+- *Plain* background, now the default: a flat background with a blue accent, lighter on the dark theme and stronger on the light one. The *Moving colours* and *Accent colour* backgrounds are still available.
+- The Samsung-style icon is now the app's default icon. Notifications show it too, together with the theme's blue.
+
+### Improved
+- Much smoother with the *Plain* and *Accent colour* backgrounds. Over a flat or almost flat background the glass effects look the same without refraction or blur, so cards, buttons and chips skip them. The bottom bar and menus still refract the content below. On a Galaxy S24 FE, the slowest frame when switching tabs went from 40 ms to 15 ms.
+- On the light theme, blue buttons and selected chips are more opaque, so their text is easier to read.
+
+### Fixed
+- Swiping between tabs could stop working after pushing past the first tab (Alarms), the same way it happened on the last one.
+
+### For developers
+- New `profile` build type: optimized like the release, but installs as `dev.glassclock.debug` to test with real performance.
+
 ## 0.2.4
 
 ### Fixed

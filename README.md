@@ -51,9 +51,10 @@ Everything is in **Settings → Appearance** and **Settings → Alarms**:
 
 - **Theme**: follow the system, or always light or always dark.
 - **Background**:
+  - *Plain* (default): a flat background with a blue accent, lighter on the dark theme and stronger on the light one.
   - *Moving colours*: four colour sets (Sky & pink, Aurora, Sunset, Ocean) that drift slowly behind the glass. The animation can be turned off to save battery.
   - *Accent colour*: a dark background with a soft glow of one colour. Pick from 10 colours (red, orange, yellow, green, mint, sky blue, blue, violet, pink, grey), each in a light, medium or dark tone. Buttons, switches and highlights use that colour.
-- **App icon**: Liquid (default), or Material, Samsung, iPhone and Motorola styles.
+- **App icon**: Samsung style (default), or Liquid, Material, iPhone and Motorola styles. Notifications always show the Samsung-style icon, because Android doesn't let an app change that one at runtime.
 - **Sounds**: a default alarm sound, a timer sound, and a different sound per alarm if you want.
 - **Per alarm**: vibration, gradually increasing volume and its duration, snooze interval and how many times you can snooze.
 - **Behaviour**: volume buttons snooze, auto-silence time, and the notification 2 hours before each alarm.
@@ -67,7 +68,7 @@ Get the APK from [Releases](../../releases) and install it (Android 12 or newer)
 Check that the file hasn't been tampered with:
 
 ```bash
-sha256sum -c liquid-clock-v0.2.4.apk.sha256
+sha256sum -c liquid-clock-v0.4.1.apk.sha256
 ```
 
 And that it's signed with the project key (SHA-256 certificate fingerprint):
@@ -77,7 +78,7 @@ D3:09:86:98:9C:2F:A7:E2:EA:C4:44:E1:B3:1F:0B:48:18:C8:EA:57:FE:21:9A:BD:D6:A3:BF
 ```
 
 ```bash
-apksigner verify --print-certs liquid-clock-v0.2.4.apk
+apksigner verify --print-certs liquid-clock-v0.4.1.apk
 ```
 
 On first launch, grant the permissions it asks for, especially **full screen**:
@@ -107,7 +108,7 @@ Build and install:
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug build installs as `dev.glassclock.debug`, so it can live alongside the release.
+The debug build installs as `dev.glassclock.debug`, so it can live alongside the release. Compose debug builds are noticeably slower; to try changes on a phone with real performance use `./gradlew assembleProfile`, which is optimized like the release but also installs as `dev.glassclock.debug`.
 
 `./gradlew assembleRelease` produces a minified APK. It's signed with the key described in
 `~/.android-keys/liquid-clock.properties` (or the path given by `-PsigningProps=...` or the

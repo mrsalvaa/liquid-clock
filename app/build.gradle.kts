@@ -25,8 +25,8 @@ android {
         applicationId = "dev.glassclock"
         minSdk = 31
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.2.4"
+        versionCode = 5
+        versionName = "0.4.1"
     }
 
     signingConfigs {

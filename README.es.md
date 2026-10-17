@@ -49,9 +49,10 @@ Todo está en **Ajustes → Apariencia** y **Ajustes → Alarmas**:
 
 - **Tema**: según el sistema, siempre claro o siempre oscuro.
 - **Fondo**:
+  - *Liso* (el predeterminado): fondo plano con acento azul, más claro en tema oscuro y más intenso en tema claro.
   - *En movimiento*: cuatro combinaciones de colores (Celeste y rosa, Aurora, Atardecer, Océano) que se mueven despacio detrás del cristal. La animación se puede desactivar para ahorrar batería.
   - *Color de énfasis*: fondo oscuro con un brillo suave de un solo color. Hay 10 colores (rojo, naranja, amarillo, verde, menta, celeste, azul, violeta, rosa y gris), cada uno en tono claro, medio u oscuro. Los botones, interruptores y resaltados usan ese color.
-- **Icono de la app**: Liquid (el predeterminado) o al estilo Material, Samsung, iPhone y Motorola.
+- **Icono de la app**: estilo Samsung (el predeterminado) o Liquid, Material, iPhone y Motorola. Las notificaciones muestran siempre el de estilo Samsung, porque Android no deja que una app cambie ese icono mientras funciona.
 - **Sonidos**: un sonido de alarma predeterminado, otro para el temporizador y, si quieres, uno distinto para cada alarma.
 - **Por alarma**: vibración, volumen creciente y su duración, intervalo para posponer y cuántas veces se puede posponer.
 - **Comportamiento**: posponer con los botones de volumen, tiempo hasta silenciar sola y el aviso 2 horas antes de cada alarma.
@@ -65,7 +66,7 @@ Descarga el APK desde [Releases](../../releases) e instálalo (Android 12 o supe
 Comprueba que el archivo no está alterado:
 
 ```bash
-sha256sum -c liquid-clock-v0.2.4.apk.sha256
+sha256sum -c liquid-clock-v0.4.1.apk.sha256
 ```
 
 Y que está firmado con la clave del proyecto (huella SHA-256 del certificado):
@@ -75,7 +76,7 @@ D3:09:86:98:9C:2F:A7:E2:EA:C4:44:E1:B3:1F:0B:48:18:C8:EA:57:FE:21:9A:BD:D6:A3:BF
 ```
 
 ```bash
-apksigner verify --print-certs liquid-clock-v0.2.4.apk
+apksigner verify --print-certs liquid-clock-v0.4.1.apk
 ```
 
 Al abrirla por primera vez, concede los permisos que pide, sobre todo **pantalla completa**:
@@ -105,7 +106,7 @@ Compila e instala:
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-La build de depuración se instala como `dev.glassclock.debug`, así que convive con la release.
+La build de depuración se instala como `dev.glassclock.debug`, así que convive con la release. En Compose las builds de depuración van bastante más lentas; para probar cambios en el móvil con el rendimiento real usa `./gradlew assembleProfile`, que está optimizada como la release pero también se instala como `dev.glassclock.debug`.
 
 `./gradlew assembleRelease` genera un APK minimizado. Se firma con la clave descrita en
 `~/.android-keys/liquid-clock.properties` (o la ruta de `-PsigningProps=...` o de la variable
