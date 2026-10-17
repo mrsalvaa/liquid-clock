@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
             val settings by Stores.settings.state.collectAsStateWithLifecycle()
             SystemBarsFor(isDarkTheme(settings.themeMode))
             GlassTheme(settings) {
-                App(requestedTab) { requestedTab = null }
+                App(settings.animatedBackground, requestedTab) { requestedTab = null }
             }
         }
     }
@@ -166,7 +166,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(requestedTab: Int?, onTabConsumed: () -> Unit) {
+private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(TAB_ALARM) }
     // Posición de la barra mientras se desliza entre pestañas (p. ej. 1,4), o null.
     var tabDrag by remember { mutableStateOf<Float?>(null) }
@@ -201,6 +201,7 @@ private fun App(requestedTab: Int?, onTabConsumed: () -> Unit) {
         LocalPrompt provides { prompt = it },
     ) {
         GlassRoot(
+            animated = animated,
             floating = {
                 AnimatedVisibility(
                     overlay == null,

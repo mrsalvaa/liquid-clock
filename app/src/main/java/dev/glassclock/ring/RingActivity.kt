@@ -32,7 +32,7 @@ class RingActivity : ComponentActivity() {
             GlassTheme(Stores.settings.value) {
                 val state by RingService.current.collectAsStateWithLifecycle()
                 LaunchedEffect(state) { if (state == null) finish() }
-                GlassRoot {
+                GlassRoot(animated = Stores.settings.value.animatedBackground) {
                     state?.let { RingScreen(it) }
                 }
             }
