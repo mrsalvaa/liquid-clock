@@ -2,6 +2,14 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## 0.4.5
+
+### Fixed
+- A time typed on the alarm or timer wheels was only applied after confirming on the keyboard. It now applies while you type, so tapping save keeps it.
+- After scrolling a wheel, the preview below ("Sonará en…") took a moment to update, and saving before it did kept the old time. The value now updates as soon as the centre number changes.
+- On the light theme, cards showed a lighter rectangle inside them that disappeared while pressed. The card shadow showed through the translucent fill; it is now drawn only outside the card.
+- On the light theme, the selection band on the wheels no longer looks like a white box.
+
 ## 0.4.1
 
 ### New

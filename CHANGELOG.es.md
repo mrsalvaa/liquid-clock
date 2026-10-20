@@ -2,6 +2,14 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 0.4.5
+
+### Correcciones
+- La hora escrita con el teclado en las ruedas de alarma o temporizador solo se aplicaba al confirmar en el teclado. Ahora se aplica mientras se escribe, así que al tocar guardar se conserva.
+- Al girar una rueda, la vista previa de abajo ("Sonará en…") tardaba en actualizarse, y si se guardaba antes quedaba la hora anterior. Ahora el valor cambia en cuanto cambia el número del centro.
+- En tema claro, las tarjetas mostraban un recuadro más claro por dentro que desaparecía al mantenerlas apretadas. La sombra se transparentaba a través del relleno; ahora se dibuja solo por fuera.
+- En tema claro, la franja de selección de las ruedas ya no se ve como un recuadro blanco.
+
 ## 0.4.1
 
 ### Novedades
