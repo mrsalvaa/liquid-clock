@@ -91,7 +91,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -129,12 +128,12 @@ fun WheelPicker(
     // Tocar el número central abre el teclado para escribirlo.
     var editing by remember { mutableStateOf(false) }
 
-    // Notifica al soltar la rueda.
+    // Notifica en cuanto cambia el número central, sin esperar a que la rueda se detenga: así la
+    // vista previa se actualiza al instante y guardar mientras gira usa el valor que se ve.
     LaunchedEffect(state) {
-        snapshotFlow { state.isScrollInProgress }
+        snapshotFlow { centerIndex % count }
             .distinctUntilChanged()
-            .filter { !it }
-            .collect { onChange(centerIndex % count) }
+            .collect { onChange(it) }
     }
     // Sincroniza si el valor cambia desde fuera.
     LaunchedEffect(value) {
@@ -148,11 +147,15 @@ fun WheelPicker(
 
     Box(modifier.width(width).height(itemHeight * visibleItems)) {
         // Lente de cristal central.
+        // En claro, un cristal blanco sobre la tarjeta (también blanca) se veía como un recuadro
+        // opaco con sombra: ahí la lente es un velo apenas oscuro y sin sombra.
         GlassSurface(
             Modifier.align(Alignment.Center).fillMaxWidth().height(itemHeight),
             shape = RoundedCornerShape(16.dp),
             strong = true,
+            tint = if (p.dark) null else p.content.copy(alpha = 0.06f),
             frost = 2.dp,
+            shadowRadius = if (p.dark) 20.dp else 0.dp,
         ) {}
         LazyColumn(
             state = state,
@@ -205,6 +208,8 @@ fun WheelPicker(
                 maxDigits = (count - 1).toString().length,
                 fontSize = fontSize,
                 modifier = Modifier.align(Alignment.Center).fillMaxWidth().height(itemHeight),
+                // Lo escrito se aplica mientras se teclea: guardar sin cerrar el teclado ya lo usa.
+                onType = { typed -> typed?.takeIf { it in 0 until count }?.let { onChange(it) } },
             ) { typed ->
                 editing = false
                 typed?.takeIf { it in 0 until count }?.let { onChange(it) }
@@ -215,7 +220,14 @@ fun WheelPicker(
 
 /** Campo numérico sobre la lente de la rueda; [onDone] recibe null si no se escribió nada válido. */
 @Composable
-private fun WheelInput(initial: String, maxDigits: Int, fontSize: Int, modifier: Modifier, onDone: (Int?) -> Unit) {
+private fun WheelInput(
+    initial: String,
+    maxDigits: Int,
+    fontSize: Int,
+    modifier: Modifier,
+    onType: (Int?) -> Unit,
+    onDone: (Int?) -> Unit,
+) {
     val p = LocalGlass.current
     var text by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
     val focus = remember { FocusRequester() }
@@ -232,6 +244,7 @@ private fun WheelInput(initial: String, maxDigits: Int, fontSize: Int, modifier:
             onValueChange = { v ->
                 val digits = v.text.filter(Char::isDigit).take(maxDigits)
                 text = TextFieldValue(digits, TextRange(digits.length))
+                onType(digits.toIntOrNull())
             },
             singleLine = true,
             textStyle = TextStyle(fontSize = fontSize.sp, color = p.accentFg, textAlign = TextAlign.Center),
