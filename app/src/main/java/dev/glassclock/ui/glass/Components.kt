@@ -43,6 +43,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import android.graphics.BlurMaskFilter
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import kotlin.math.roundToInt
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -122,12 +135,17 @@ fun GlassSurface(
                 .graphicsLayer {
                     scaleX = sx
                     scaleY = sy
-                    this.shape = shape
-                    shadowElevation = shadowRadius.toPx() * 0.35f
-                    val shadowColor = Color.Black.copy(alpha = if (p.dark) 0.5f else 0.18f)
-                    ambientShadowColor = shadowColor
-                    spotShadowColor = shadowColor
+                    if (p.dark) {
+                        this.shape = shape
+                        shadowElevation = shadowRadius.toPx() * 0.35f
+                        val shadowColor = Color.Black.copy(alpha = 0.5f)
+                        ambientShadowColor = shadowColor
+                        spotShadowColor = shadowColor
+                    }
                 }
+                // En claro, la sombra de elevación se transparenta a través del relleno y deja un
+                // recuadro más claro en el centro: ahí se dibuja una sombra solo por fuera.
+                .then(if (!p.dark && shadowRadius > 0.dp) Modifier.outerShadow(shape, shadowRadius) else Modifier)
                 .clip(shape)
                 .background(surface)
                 .drawBehind {
@@ -199,6 +217,41 @@ fun GlassSurface(
         )
     }
     }
+}
+
+/**
+ * Sombra suave que solo se ve fuera de [shape], para superficies semitransparentes. Se pinta una
+ * vez por tamaño en un bitmap, así que desplazar la lista no la recalcula.
+ */
+private fun Modifier.outerShadow(shape: Shape, radius: Dp): Modifier = drawWithCache {
+    val blur = radius.toPx() * 0.45f
+    val dy = radius.toPx() * 0.2f
+    val pad = (blur * 2 + dy).roundToInt()
+    val w = size.width.roundToInt() + pad * 2
+    val h = size.height.roundToInt() + pad * 2
+    if (blur <= 0f || w <= pad * 2 || h <= pad * 2) return@drawWithCache onDrawBehind {}
+    val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }.asAndroidPath()
+    val bitmap = ImageBitmap(w, h)
+    Canvas(bitmap).nativeCanvas.apply {
+        translate(pad.toFloat(), pad.toFloat())
+        save()
+        translate(0f, dy)
+        drawPath(
+            path,
+            android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.Black.copy(alpha = 0.16f).toArgb()
+                maskFilter = BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL)
+            },
+        )
+        restore()
+        drawPath(
+            path,
+            android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+            },
+        )
+    }
+    onDrawBehind { drawImage(bitmap, Offset(-pad.toFloat(), -pad.toFloat())) }
 }
 
 /** Tarjeta de cristal con relleno y columna. */
