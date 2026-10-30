@@ -76,6 +76,13 @@ import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.abs
 
 /**
  * Superficie de "cristal líquido" al estilo de Apple: refracta lo que tiene detrás como una lente
@@ -108,6 +115,11 @@ fun GlassSurface(
     val sy by animateFloatAsState(if (pressed) 0.95f else 1f, squish, label = "sy")
     val surface = tint ?: if (strong) p.tintStrong else p.tint
     val clickable = onClick != null || onLongClick != null
+
+    if (p.solid) {
+        SolidSurface(modifier, shape, tint, onClick, onLongClick, content)
+        return
+    }
 
     val clickModifier = if (clickable) {
         Modifier.combinedClickable(
@@ -254,6 +266,101 @@ private fun Modifier.outerShadow(shape: Shape, radius: Dp): Modifier = drawWithC
     onDrawBehind { drawImage(bitmap, Offset(-pad.toFloat(), -pad.toFloat())) }
 }
 
+/** Nivel de anidamiento en el estilo sólido: cada superficie dentro de otra va un tono más allá. */
+private val LocalSolidLevel = staticCompositionLocalOf { 0 }
+
+/**
+ * Superficie del estilo sólido: opaca, con un borde fino y, en oscuro, un brillo apenas más claro
+ * arriba. Al pulsarla se achica un poco, sin rebote.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SolidSurface(
+    modifier: Modifier,
+    shape: Shape,
+    tint: Color?,
+    onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val p = LocalGlass.current
+    val haptics = LocalHapticFeedback.current
+    val level = LocalSolidLevel.current
+    val shape = remember(shape) { SolidShape(shape) }
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(stiffness = 900f), label = "press")
+    val fill = p.levels[level.coerceAtMost(p.levels.lastIndex)]
+    Box(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                if (!p.dark && level == 0) {
+                    this.shape = shape
+                    shadowElevation = 3.dp.toPx()
+                    ambientShadowColor = Color.Black.copy(alpha = 0.3f)
+                    spotShadowColor = Color.Black.copy(alpha = 0.3f)
+                }
+            }
+            .clip(shape)
+            .background(fill)
+            .then(if (tint != null) Modifier.background(tint) else Modifier)
+            .then(
+                if (p.dark) {
+                    Modifier.drawBehind {
+                        drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.035f), 0.6f to Color.Transparent))
+                    }
+                } else {
+                    Modifier
+                },
+            )
+            .border(1.dp, p.outline, shape)
+            .then(
+                if (onClick != null || onLongClick != null) {
+                    Modifier.combinedClickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = onClick ?: {},
+                        onLongClick = onLongClick?.let {
+                            {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                it()
+                            }
+                        },
+                    )
+                } else {
+                    Modifier
+                },
+            ),
+        propagateMinConstraints = true,
+    ) {
+        CompositionLocalProvider(LocalSolidLevel provides level + 1) {
+            Box(content = content)
+        }
+    }
+}
+
+/**
+ * Forma sobria del estilo sólido a partir de la de Liquid Glass: las esquinas grandes se achican
+ * a la mitad (tarjetas 14 dp, diálogos 16 dp) y las pastillas pasan a rectángulos de 10 dp. Lo
+ * cuadrado y redondo (botones de ícono, esferas) sigue siendo un círculo.
+ */
+private class SolidShape(private val original: Shape) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val r = (original as? RoundedCornerShape)?.topStart?.toPx(size, density)
+            ?: return original.createOutline(size, layoutDirection, density)
+        val minSide = minOf(size.width, size.height)
+        val pill = r >= minSide / 2 - 0.5f
+        if (pill && abs(size.width - size.height) < 1f) return original.createOutline(size, layoutDirection, density)
+        val radius = with(density) { if (pill) 10.dp.toPx() else (r / 2).coerceIn(6.dp.toPx(), 16.dp.toPx()) }
+        return RoundedCornerShape(radius).createOutline(size, layoutDirection, density)
+    }
+
+    override fun equals(other: Any?) = other is SolidShape && other.original == original
+    override fun hashCode() = original.hashCode()
+}
+
 /** Tarjeta de cristal con relleno y columna. */
 @Composable
 fun GlassCard(
@@ -282,11 +389,11 @@ fun GlassIconButton(
         modifier.size(size).graphicsLayer { alpha = if (enabled) 1f else 0.4f },
         shape = CircleShape,
         strong = true,
-        tint = if (prominent) p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f) else null,
+        tint = if (prominent) (if (p.solid) p.accent else p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f)) else null,
         onClick = if (enabled) onClick else null,
     ) {
         Icon(
-            icon,
+            styled(icon),
             contentDescription,
             Modifier.align(Alignment.Center).size(size * 0.45f),
             tint = if (prominent) p.onAccent else p.content,
@@ -306,8 +413,8 @@ fun GlassButton(
 ) {
     val p = LocalGlass.current
     val tint = when {
-        danger -> p.danger.copy(alpha = 0.55f)
-        prominent -> p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f)
+        danger -> if (p.solid) p.danger.copy(alpha = 0.85f) else p.danger.copy(alpha = 0.55f)
+        prominent -> (if (p.solid) p.accent else p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f))
         else -> null
     }
     val textColor = when {
@@ -328,7 +435,7 @@ fun GlassButton(
             horizontalArrangement = Arrangement.Center,
         ) {
             if (icon != null) {
-                Icon(icon, null, Modifier.size(20.dp), tint = textColor)
+                Icon(styled(icon), null, Modifier.size(20.dp), tint = textColor)
                 Spacer(Modifier.width(8.dp))
             }
             Text(text, color = textColor, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
@@ -349,7 +456,7 @@ fun GlassChip(
     GlassSurface(
         modifier.height(40.dp),
         shape = shape,
-        tint = if (selected) p.accent.copy(alpha = if (p.dark) 0.5f else 0.92f) else null,
+        tint = if (selected) (if (p.solid) p.accent else p.accent.copy(alpha = if (p.dark) 0.5f else 0.92f)) else null,
         frost = 4.dp,
         shadowRadius = 6.dp,
         onClick = onClick,

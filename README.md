@@ -4,17 +4,25 @@
 
 Shows up on your phone as **Clock** (or *Reloj*, depending on the language).
 
-A free, tracker-free clock app for Android with an Apple *Liquid Glass*-style interface: glass surfaces that refract what's behind them like a lens (thanks to [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass)), with glowing edges and buttons that squish like a drop when pressed.
+A free, tracker-free clock app for Android with an Apple *Liquid Glass*-style interface: glass surfaces that refract what's behind them like a lens (thanks to [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass)), with glowing edges and buttons that squish like a drop when pressed. If you'd rather have something plainer, Settings has a Solid style: opaque cards, small corners and outline icons.
 
 Inspired by Samsung's clock app, built for personal use and released under GPL-3.0.
 
 > The in-app interface is currently in Spanish only.
 
+<p align="center"><b>Liquid Glass</b></p>
 <p align="center">
-  <img src="docs/screenshots/alarms.jpg" width="200" alt="Alarms">
-  <img src="docs/screenshots/stopwatch.jpg" width="200" alt="Stopwatch">
-  <img src="docs/screenshots/timer.jpg" width="200" alt="Timer">
-  <img src="docs/screenshots/world-clock.jpg" width="200" alt="World clock">
+  <img src="docs/screenshots/alarms.png" width="200" alt="Alarms">
+  <img src="docs/screenshots/stopwatch.png" width="200" alt="Stopwatch">
+  <img src="docs/screenshots/timer.png" width="200" alt="Timer">
+  <img src="docs/screenshots/world-clock.png" width="200" alt="World clock">
+</p>
+<p align="center"><b>Solid</b></p>
+<p align="center">
+  <img src="docs/screenshots/alarms-solid.png" width="200" alt="Alarms">
+  <img src="docs/screenshots/stopwatch-solid.png" width="200" alt="Stopwatch">
+  <img src="docs/screenshots/timer-solid.png" width="200" alt="Timer">
+  <img src="docs/screenshots/world-clock-solid.png" width="200" alt="World clock">
 </p>
 
 ## Features
@@ -68,7 +76,7 @@ Get the APK from [Releases](../../releases) and install it (Android 12 or newer)
 Check that the file hasn't been tampered with:
 
 ```bash
-sha256sum -c liquid-clock-v0.4.5.apk.sha256
+sha256sum -c liquid-clock-v0.5.0.apk.sha256
 ```
 
 And that it's signed with the project key (SHA-256 certificate fingerprint):
@@ -78,7 +86,7 @@ D3:09:86:98:9C:2F:A7:E2:EA:C4:44:E1:B3:1F:0B:48:18:C8:EA:57:FE:21:9A:BD:D6:A3:BF
 ```
 
 ```bash
-apksigner verify --print-certs liquid-clock-v0.4.5.apk
+apksigner verify --print-certs liquid-clock-v0.5.0.apk
 ```
 
 On first launch, grant the permissions it asks for, especially **full screen**:

@@ -50,6 +50,7 @@ import dev.glassclock.ui.screens.rememberNow
 import dev.glassclock.util.formatInstantClock
 import dev.glassclock.util.formatLongDate
 import dev.glassclock.util.is24h
+import dev.glassclock.ui.glass.styled
 
 @Composable
 fun RingScreen(state: RingState) {
@@ -90,7 +91,7 @@ private fun RingMain(state: RingState, onDismiss: () -> Unit) {
                 tint = p.accent.copy(alpha = 0.45f),
             ) {
                 Icon(
-                    if (state.kind == RingState.Kind.ALARM) Icons.Rounded.Alarm else Icons.Rounded.HourglassBottom,
+                    styled(if (state.kind == RingState.Kind.ALARM) Icons.Rounded.Alarm else Icons.Rounded.HourglassBottom),
                     null,
                     Modifier.align(Alignment.Center).size(44.dp),
                     tint = p.onAccent,

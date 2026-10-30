@@ -2,6 +2,11 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## 0.5.0
+
+### New
+- Interface style: besides Liquid Glass (the default, with all its usual options) there is "Solid", with opaque cards on a plain background and no glass effects. It is plainer: less rounded corners, rectangular buttons, outline icons and a docked bottom bar. It has light or dark theme and its own accent colour.
+
 ## 0.4.5
 
 ### Fixed

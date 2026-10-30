@@ -84,6 +84,7 @@ import dev.glassclock.util.is24h
 import dev.glassclock.util.relativeDay
 import java.time.Instant
 import java.time.ZoneId
+import dev.glassclock.ui.glass.styled
 
 @Composable
 fun AlarmListScreen(
@@ -406,7 +407,7 @@ private fun GroupCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                Icons.Rounded.ExpandMore,
+                styled(Icons.Rounded.ExpandMore),
                 if (group.collapsed) "Desplegar" else "Plegar",
                 Modifier.size(28.dp).rotate(rotation),
                 tint = p.contentSecondary,

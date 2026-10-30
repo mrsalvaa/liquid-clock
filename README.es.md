@@ -4,15 +4,23 @@
 
 Se instala en el móvil como **Reloj** (o *Clock*, según el idioma).
 
-Reloj para Android libre y sin rastreo, con interfaz de estilo *Liquid Glass* de Apple: superficies de cristal que refractan lo que tienen detrás como una lente (gracias a [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass)), con brillo en los bordes y botones que se deforman como una gota al pulsarlos.
+Reloj para Android libre y sin rastreo, con interfaz de estilo *Liquid Glass* de Apple: superficies de cristal que refractan lo que tienen detrás como una lente (gracias a [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass)), con brillo en los bordes y botones que se deforman como una gota al pulsarlos. Si preferís algo más sobrio, en Ajustes podés pasar al estilo Sólido: tarjetas opacas, esquinas chicas e íconos de líneas.
 
 Inspirado en el reloj de Samsung, pensado para uso personal y publicado bajo GPL-3.0.
 
+<p align="center"><b>Liquid Glass</b></p>
 <p align="center">
-  <img src="docs/screenshots/alarms.jpg" width="200" alt="Alarmas">
-  <img src="docs/screenshots/stopwatch.jpg" width="200" alt="Cronómetro">
-  <img src="docs/screenshots/timer.jpg" width="200" alt="Temporizador">
-  <img src="docs/screenshots/world-clock.jpg" width="200" alt="Reloj mundial">
+  <img src="docs/screenshots/alarms.png" width="200" alt="Alarmas">
+  <img src="docs/screenshots/stopwatch.png" width="200" alt="Cronómetro">
+  <img src="docs/screenshots/timer.png" width="200" alt="Temporizador">
+  <img src="docs/screenshots/world-clock.png" width="200" alt="Reloj mundial">
+</p>
+<p align="center"><b>Sólido</b></p>
+<p align="center">
+  <img src="docs/screenshots/alarms-solid.png" width="200" alt="Alarmas">
+  <img src="docs/screenshots/stopwatch-solid.png" width="200" alt="Cronómetro">
+  <img src="docs/screenshots/timer-solid.png" width="200" alt="Temporizador">
+  <img src="docs/screenshots/world-clock-solid.png" width="200" alt="Reloj mundial">
 </p>
 
 ## Funciones
@@ -66,7 +74,7 @@ Descarga el APK desde [Releases](../../releases) e instálalo (Android 12 o supe
 Comprueba que el archivo no está alterado:
 
 ```bash
-sha256sum -c liquid-clock-v0.4.5.apk.sha256
+sha256sum -c liquid-clock-v0.5.0.apk.sha256
 ```
 
 Y que está firmado con la clave del proyecto (huella SHA-256 del certificado):
@@ -76,7 +84,7 @@ D3:09:86:98:9C:2F:A7:E2:EA:C4:44:E1:B3:1F:0B:48:18:C8:EA:57:FE:21:9A:BD:D6:A3:BF
 ```
 
 ```bash
-apksigner verify --print-certs liquid-clock-v0.4.5.apk
+apksigner verify --print-certs liquid-clock-v0.5.0.apk
 ```
 
 Al abrirla por primera vez, concede los permisos que pide, sobre todo **pantalla completa**:

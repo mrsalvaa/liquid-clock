@@ -99,6 +99,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.glassclock.data.Stores
+import dev.glassclock.ui.glass.FlatNavBar
+import dev.glassclock.ui.glass.FlatNavBarHeight
 import dev.glassclock.ui.glass.GlassNavBar
 import dev.glassclock.ui.glass.GlassRoot
 import dev.glassclock.ui.glass.GlassTheme
@@ -150,7 +152,7 @@ class MainActivity : ComponentActivity() {
             val settings by Stores.settings.state.collectAsStateWithLifecycle()
             SystemBarsFor(isDarkTheme(settings.themeMode))
             GlassTheme(settings) {
-                App(settings.animatedBackground, requestedTab) { requestedTab = null }
+                App(settings.animatedBackground, requestedTab, flatNav = settings.uiStyle == 1) { requestedTab = null }
             }
         }
     }
@@ -166,7 +168,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit) {
+private fun App(animated: Boolean, requestedTab: Int?, flatNav: Boolean, onTabConsumed: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(TAB_ALARM) }
     // Posición de la barra mientras se desliza entre pestañas (p. ej. 1,4), o null.
     var tabDrag by remember { mutableStateOf<Float?>(null) }
@@ -184,7 +186,8 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
 
     val insets = WindowInsets.safeDrawing.asPaddingValues()
     val dir = LocalLayoutDirection.current
-    val navHeight = 70.dp + 12.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // Barra flotante: 70 + 12 de margen; plana (estilo sólido): pegada abajo.
+    val navHeight = (if (flatNav) FlatNavBarHeight else 70.dp + 12.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val tabPadding = PaddingValues(
         top = insets.calculateTopPadding(),
         bottom = navHeight + 24.dp,
@@ -209,20 +212,25 @@ private fun App(animated: Boolean, requestedTab: Int?, onTabConsumed: () -> Unit
                     enter = fadeIn() + slideInVertically { it / 2 },
                     exit = fadeOut() + slideOutVertically { it / 2 },
                 ) {
-                    GlassNavBar(
-                        items = listOf(
-                            NavItem("Alarma", Icons.Rounded.Alarm),
-                            NavItem("Cronómetro", Icons.Rounded.Timer),
-                            NavItem("Temporizador", Icons.Rounded.HourglassBottom),
-                            NavItem("Mundial", Icons.Rounded.Public),
-                        ),
-                        selected = tab,
-                        dragPosition = { tabDrag },
-                        onSelect = { tab = it },
-                        modifier = Modifier
-                            .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    val navItems = listOf(
+                        NavItem("Alarma", Icons.Rounded.Alarm),
+                        NavItem("Cronómetro", Icons.Rounded.Timer),
+                        NavItem("Temporizador", Icons.Rounded.HourglassBottom),
+                        NavItem("Mundial", Icons.Rounded.Public),
                     )
+                    if (flatNav) {
+                        FlatNavBar(navItems, selected = tab, onSelect = { tab = it })
+                    } else {
+                        GlassNavBar(
+                            items = navItems,
+                            selected = tab,
+                            dragPosition = { tabDrag },
+                            onSelect = { tab = it },
+                            modifier = Modifier
+                                .navigationBarsPadding()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
                 }
                 PermissionPrompt()
                 ActionSheetHost(sheet) { sheet = null }

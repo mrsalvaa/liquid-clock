@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 0.5.0
+
+### Novedades
+- Estilo de interfaz: además de Liquid Glass (el predeterminado, con todas sus opciones de siempre) está "Sólido", con tarjetas opacas sobre fondo liso y sin efectos de cristal. Es más sobrio: esquinas menos redondeadas, botones rectangulares, íconos de líneas y barra inferior acoplada. Tiene tema claro u oscuro y su propio color de énfasis.
+
 ## 0.4.5
 
 ### Correcciones

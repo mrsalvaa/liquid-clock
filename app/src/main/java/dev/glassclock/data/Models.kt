@@ -81,6 +81,10 @@ data class AppSettings(
     val volumeKeysSnooze: Boolean = true,
     val autoSilenceMinutes: Int = 10,
     val animatedBackground: Boolean = true,
+    /** Estilo de interfaz: 0 = Liquid Glass, 1 = sólido. */
+    val uiStyle: Int = 0,
+    /** Color de énfasis del estilo sólido, en ARGB (aparte del de Liquid Glass). */
+    val solidAccent: Long = 0xFF0EA5E9,
     /** Índice en COLOR_SETS. */
     val colorSet: Int = 0,
     /** 0 = según el sistema, 1 = claro, 2 = oscuro. */
