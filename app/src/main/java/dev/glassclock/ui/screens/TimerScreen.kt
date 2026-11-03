@@ -113,9 +113,9 @@ fun TimerScreen(contentPadding: PaddingValues) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     WheelPicker(100, h, { h = it }, width = 76.dp, fontSize = 34)
-                    WheelColon(34)
+                    WheelColon(fontSize = 34)
                     WheelPicker(60, m, { m = it }, width = 76.dp, fontSize = 34)
-                    WheelColon(34)
+                    WheelColon(fontSize = 34)
                     WheelPicker(60, s, { s = it }, width = 76.dp, fontSize = 34)
                 }
                 // Unidades en su propia fila para no desplazar los ":" hacia abajo.

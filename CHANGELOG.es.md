@@ -2,6 +2,12 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 0.5.1
+
+### Correcciones
+- Con fondo liso en tema claro, la barra de pestañas ahora deja ver el efecto de cristal líquido, igual que en oscuro.
+- Cristal y controles al día con el resto de la suite: la barra de pestañas también se puede arrastrar con el dedo y las animaciones respetan el ajuste del sistema para quitarlas.
+
 ## 0.5.0
 
 ### Novedades

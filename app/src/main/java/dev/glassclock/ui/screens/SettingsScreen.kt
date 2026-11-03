@@ -135,7 +135,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onClose: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     WheelPicker(24, s.bedtimeHour, { v -> edit { it.copy(bedtimeHour = v) } }, visibleItems = 3)
-                    WheelColon(38)
+                    WheelColon(fontSize = 38)
                     WheelPicker(60, s.bedtimeMinute, { v -> edit { it.copy(bedtimeMinute = v) } }, visibleItems = 3)
                 }
                 DaySelector(s.bedtimeDays, { v -> edit { it.copy(bedtimeDays = v) } })

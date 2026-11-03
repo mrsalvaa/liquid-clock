@@ -1,5 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package dev.glassclock.ui.glass
 
+import android.graphics.BlurMaskFilter
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -26,6 +30,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -34,55 +39,61 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Canvas
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.addOutline
-import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
-import android.graphics.BlurMaskFilter
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import kotlin.math.roundToInt
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Superficie de "cristal líquido" al estilo de Apple: refracta lo que tiene detrás como una lente
@@ -109,17 +120,13 @@ fun GlassSurface(
     val backdrop = LocalBackdrop.current
     val haptics = LocalHapticFeedback.current
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
+    // Sin la deformación de gota si el sistema pide quitar animaciones.
+    val pressed = interaction.collectIsPressedAsState().value && !LocalReducedMotion.current
     val squish = spring<Float>(dampingRatio = 0.42f, stiffness = 520f)
     val sx by animateFloatAsState(if (pressed) 1.04f else 1f, squish, label = "sx")
     val sy by animateFloatAsState(if (pressed) 0.95f else 1f, squish, label = "sy")
     val surface = tint ?: if (strong) p.tintStrong else p.tint
     val clickable = onClick != null || onLongClick != null
-
-    if (p.solid) {
-        SolidSurface(modifier, shape, tint, onClick, onLongClick, content)
-        return
-    }
 
     val clickModifier = if (clickable) {
         Modifier.combinedClickable(
@@ -135,6 +142,11 @@ fun GlassSurface(
         )
     } else {
         Modifier
+    }
+
+    if (p.solid) {
+        SolidSurface(modifier, shape, tint, pressed, clickModifier, content)
+        return
     }
 
     // Fondo liso o de énfasis (un brillo quieto y muy suave): refractarlo o desenfocarlo da lo
@@ -231,6 +243,76 @@ fun GlassSurface(
     }
 }
 
+/** Nivel de anidamiento en el estilo sólido: cada superficie dentro de otra va un tono más allá. */
+private val LocalSolidLevel = staticCompositionLocalOf { 0 }
+
+/**
+ * Superficie del estilo sólido: opaca, con un borde fino y, en oscuro, un brillo apenas más claro
+ * arriba. Al pulsarla se achica un poco, sin rebote.
+ */
+@Composable
+private fun SolidSurface(
+    modifier: Modifier,
+    shape: Shape,
+    tint: Color?,
+    pressed: Boolean,
+    clickModifier: Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val p = LocalGlass.current
+    val level = LocalSolidLevel.current
+    val shape = remember(shape) { SolidShape(shape) }
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(stiffness = 900f), label = "press")
+    val fill = p.levels[level.coerceAtMost(p.levels.lastIndex)]
+    Box(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .then(if (!p.dark && level == 0) Modifier.outerShadow(shape, 10.dp) else Modifier)
+            .clip(shape)
+            .background(fill)
+            .then(if (tint != null) Modifier.background(tint) else Modifier)
+            .then(
+                if (p.dark) {
+                    Modifier.drawBehind {
+                        drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.035f), 0.6f to Color.Transparent))
+                    }
+                } else {
+                    Modifier
+                },
+            )
+            .border(1.dp, p.outline, shape)
+            .then(clickModifier),
+        propagateMinConstraints = true,
+    ) {
+        CompositionLocalProvider(LocalSolidLevel provides level + 1) {
+            Box(content = content)
+        }
+    }
+}
+
+/**
+ * Forma sobria del estilo sólido a partir de la de Liquid Glass: las esquinas grandes se achican
+ * a la mitad (tarjetas 14 dp, diálogos 16 dp) y las pastillas pasan a rectángulos de 10 dp. Lo
+ * cuadrado y redondo (botones de ícono) sigue siendo un círculo.
+ */
+private class SolidShape(private val original: Shape) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val r = (original as? RoundedCornerShape)?.topStart?.toPx(size, density)
+            ?: return original.createOutline(size, layoutDirection, density)
+        val minSide = minOf(size.width, size.height)
+        val pill = r >= minSide / 2 - 0.5f
+        if (pill && abs(size.width - size.height) < 1f) return original.createOutline(size, layoutDirection, density)
+        val radius = with(density) { if (pill) 10.dp.toPx() else (r / 2).coerceIn(6.dp.toPx(), 16.dp.toPx()) }
+        return RoundedCornerShape(radius).createOutline(size, layoutDirection, density)
+    }
+
+    override fun equals(other: Any?) = other is SolidShape && other.original == original
+    override fun hashCode() = original.hashCode()
+}
+
 /**
  * Sombra suave que solo se ve fuera de [shape], para superficies semitransparentes. Se pinta una
  * vez por tamaño en un bitmap, así que desplazar la lista no la recalcula.
@@ -266,101 +348,6 @@ private fun Modifier.outerShadow(shape: Shape, radius: Dp): Modifier = drawWithC
     onDrawBehind { drawImage(bitmap, Offset(-pad.toFloat(), -pad.toFloat())) }
 }
 
-/** Nivel de anidamiento en el estilo sólido: cada superficie dentro de otra va un tono más allá. */
-private val LocalSolidLevel = staticCompositionLocalOf { 0 }
-
-/**
- * Superficie del estilo sólido: opaca, con un borde fino y, en oscuro, un brillo apenas más claro
- * arriba. Al pulsarla se achica un poco, sin rebote.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun SolidSurface(
-    modifier: Modifier,
-    shape: Shape,
-    tint: Color?,
-    onClick: (() -> Unit)?,
-    onLongClick: (() -> Unit)?,
-    content: @Composable BoxScope.() -> Unit,
-) {
-    val p = LocalGlass.current
-    val haptics = LocalHapticFeedback.current
-    val level = LocalSolidLevel.current
-    val shape = remember(shape) { SolidShape(shape) }
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(stiffness = 900f), label = "press")
-    val fill = p.levels[level.coerceAtMost(p.levels.lastIndex)]
-    Box(
-        modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                if (!p.dark && level == 0) {
-                    this.shape = shape
-                    shadowElevation = 3.dp.toPx()
-                    ambientShadowColor = Color.Black.copy(alpha = 0.3f)
-                    spotShadowColor = Color.Black.copy(alpha = 0.3f)
-                }
-            }
-            .clip(shape)
-            .background(fill)
-            .then(if (tint != null) Modifier.background(tint) else Modifier)
-            .then(
-                if (p.dark) {
-                    Modifier.drawBehind {
-                        drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.035f), 0.6f to Color.Transparent))
-                    }
-                } else {
-                    Modifier
-                },
-            )
-            .border(1.dp, p.outline, shape)
-            .then(
-                if (onClick != null || onLongClick != null) {
-                    Modifier.combinedClickable(
-                        interactionSource = interaction,
-                        indication = null,
-                        onClick = onClick ?: {},
-                        onLongClick = onLongClick?.let {
-                            {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                it()
-                            }
-                        },
-                    )
-                } else {
-                    Modifier
-                },
-            ),
-        propagateMinConstraints = true,
-    ) {
-        CompositionLocalProvider(LocalSolidLevel provides level + 1) {
-            Box(content = content)
-        }
-    }
-}
-
-/**
- * Forma sobria del estilo sólido a partir de la de Liquid Glass: las esquinas grandes se achican
- * a la mitad (tarjetas 14 dp, diálogos 16 dp) y las pastillas pasan a rectángulos de 10 dp. Lo
- * cuadrado y redondo (botones de ícono, esferas) sigue siendo un círculo.
- */
-private class SolidShape(private val original: Shape) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val r = (original as? RoundedCornerShape)?.topStart?.toPx(size, density)
-            ?: return original.createOutline(size, layoutDirection, density)
-        val minSide = minOf(size.width, size.height)
-        val pill = r >= minSide / 2 - 0.5f
-        if (pill && abs(size.width - size.height) < 1f) return original.createOutline(size, layoutDirection, density)
-        val radius = with(density) { if (pill) 10.dp.toPx() else (r / 2).coerceIn(6.dp.toPx(), 16.dp.toPx()) }
-        return RoundedCornerShape(radius).createOutline(size, layoutDirection, density)
-    }
-
-    override fun equals(other: Any?) = other is SolidShape && other.original == original
-    override fun hashCode() = original.hashCode()
-}
-
 /** Tarjeta de cristal con relleno y columna. */
 @Composable
 fun GlassCard(
@@ -386,10 +373,13 @@ fun GlassIconButton(
 ) {
     val p = LocalGlass.current
     GlassSurface(
-        modifier.size(size).graphicsLayer { alpha = if (enabled) 1f else 0.4f },
+        modifier
+            .size(size)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
+            .semantics { if (!enabled) disabled() },
         shape = CircleShape,
         strong = true,
-        tint = if (prominent) (if (p.solid) p.accent else p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f)) else null,
+        tint = if (prominent) p.accentFill() else null,
         onClick = if (enabled) onClick else null,
     ) {
         Icon(
@@ -413,8 +403,8 @@ fun GlassButton(
 ) {
     val p = LocalGlass.current
     val tint = when {
-        danger -> if (p.solid) p.danger.copy(alpha = 0.85f) else p.danger.copy(alpha = 0.55f)
-        prominent -> (if (p.solid) p.accent else p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f))
+        danger -> p.danger.copy(alpha = if (p.solid) 0.85f else 0.55f)
+        prominent -> p.accentFill()
         else -> null
     }
     val textColor = when {
@@ -423,7 +413,13 @@ fun GlassButton(
         else -> p.content
     }
     GlassSurface(
-        modifier.heightIn(min = 54.dp).graphicsLayer { alpha = if (enabled) 1f else 0.4f },
+        modifier
+            .heightIn(min = 54.dp)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                if (!enabled) disabled()
+            },
         shape = CircleShape,
         strong = true,
         tint = tint,
@@ -454,7 +450,12 @@ fun GlassChip(
 ) {
     val p = LocalGlass.current
     GlassSurface(
-        modifier.height(40.dp),
+        modifier
+            .height(40.dp)
+            .semantics {
+                this.selected = selected
+                role = Role.RadioButton
+            },
         shape = shape,
         tint = if (selected) (if (p.solid) p.accent else p.accent.copy(alpha = if (p.dark) 0.5f else 0.92f)) else null,
         frost = 4.dp,
@@ -495,12 +496,12 @@ fun GlassSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: 
             .clip(CircleShape)
             .background(track)
             .border(1.dp, Color.White.copy(alpha = p.rim * 0.4f), CircleShape)
-            .clickable(interactionSource = interaction, indication = null) { onCheckedChange(!checked) },
+            .toggleable(checked, interaction, null, role = Role.Switch, onValueChange = onCheckedChange),
     ) {
         Box(
             Modifier
                 .padding(3.dp)
-                .offset(x = if (checked) offset - (stretch - 26.dp) else offset)
+                .offset { IntOffset((if (checked) offset - (stretch - 26.dp) else offset).roundToPx(), 0) }
                 .size(width = stretch, height = 26.dp)
                 .shadow(4.dp, CircleShape)
                 .clip(CircleShape)
@@ -522,25 +523,34 @@ fun GlassTextField(
     singleLine: Boolean = true,
     focusRequester: FocusRequester? = null,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    enabled: Boolean = true,
 ) {
     val p = LocalGlass.current
     val style = textStyle ?: TextStyle(fontSize = 17.sp)
     GlassSurface(modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), frost = 12.dp, refraction = false) {
         Box(Modifier.padding(horizontal = 18.dp, vertical = 15.dp)) {
-            if (value.isEmpty()) {
-                Text(placeholder, style = style, color = p.contentSecondary)
-            }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = singleLine,
-                textStyle = style.copy(color = p.content),
+                enabled = enabled,
+                visualTransformation = visualTransformation,
+                textStyle = style.copy(color = if (enabled) p.content else p.contentSecondary),
                 cursorBrush = SolidColor(p.accentFg),
                 keyboardOptions = keyboardOptions,
                 keyboardActions = keyboardActions,
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
+                // El texto de ayuda va dentro del campo (como en los de Material): así forma parte
+                // de su nodo de accesibilidad y TalkBack dice qué campo es.
+                decorationBox = { inner ->
+                    Box {
+                        if (value.isEmpty()) Text(placeholder, style = style, color = p.contentSecondary)
+                        inner()
+                    }
+                },
             )
         }
     }
@@ -550,7 +560,7 @@ fun GlassTextField(
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text.uppercase(),
-        modifier.padding(start = 8.dp, top = 18.dp, bottom = 8.dp),
+        modifier.padding(start = 8.dp, top = 18.dp, bottom = 8.dp).semantics { heading() },
         color = LocalGlass.current.contentSecondary,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
@@ -565,6 +575,7 @@ fun SettingRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
+    leading: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     val p = LocalGlass.current
@@ -573,7 +584,7 @@ fun SettingRow(
             .fillMaxWidth()
             .then(
                 if (onClick != null) {
-                    Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
+                    Modifier.clickable(remember { MutableInteractionSource() }, null, role = Role.Button, onClick = onClick)
                 } else {
                     Modifier
                 },
@@ -581,6 +592,7 @@ fun SettingRow(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        leading?.invoke()
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             if (subtitle != null) {
@@ -607,7 +619,7 @@ fun ScreenTitle(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Text(title, Modifier.semantics { heading() }, fontSize = 34.sp, fontWeight = FontWeight.Bold)
             if (subtitle != null) {
                 Text(subtitle, fontSize = 15.sp, color = p.contentSecondary)
             }

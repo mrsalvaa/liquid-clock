@@ -1,54 +1,36 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package dev.glassclock.ui.glass
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
-import kotlinx.coroutines.launch
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -57,6 +39,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -65,6 +49,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material3.Icon
@@ -73,32 +60,53 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 /**
  * Rueda vertical tipo iOS. Con [cyclic] los valores se repiten indefinidamente.
@@ -115,6 +123,8 @@ fun WheelPicker(
     width: Dp = 84.dp,
     fontSize: Int = 38,
     label: (Int) -> String = { "%02d".format(it) },
+    /** Posición de la rueda para un número escrito con el teclado (null si no vale). */
+    typed: (Int) -> Int? = { it.takeIf { n -> n in 0 until count } },
 ) {
     val p = LocalGlass.current
     val total = if (cyclic) count * 1000 else count
@@ -210,14 +220,14 @@ fun WheelPicker(
         if (editing) {
             WheelInput(
                 initial = label(value),
-                maxDigits = (count - 1).toString().length,
+                maxDigits = label(count - 1).length,
                 fontSize = fontSize,
                 modifier = Modifier.align(Alignment.Center).fillMaxWidth().height(itemHeight),
                 // Lo escrito se aplica mientras se teclea: guardar sin cerrar el teclado ya lo usa.
-                onType = { typed -> typed?.takeIf { it in 0 until count }?.let { onChange(it) } },
-            ) { typed ->
+                onType = { n -> n?.let(typed)?.let { onChange(it) } },
+            ) { n ->
                 editing = false
-                typed?.takeIf { it in 0 until count }?.let { onChange(it) }
+                n?.let(typed)?.let { onChange(it) }
             }
         }
     }
@@ -270,7 +280,7 @@ private fun WheelInput(
 
 /** ":" alineado con el centro de los números de las ruedas. */
 @Composable
-fun WheelColon(fontSize: Int = 38, modifier: Modifier = Modifier) {
+fun WheelColon(modifier: Modifier = Modifier, fontSize: Int = 38) {
     Text(
         ":",
         modifier.width((fontSize * 0.45f).dp).offset(y = (-fontSize * 0.07f).dp),
@@ -299,24 +309,52 @@ fun GlassNavBar(
     // pestaña, continúa desde donde está hasta la pestaña elegida (sin volver a la anterior).
     val bubble = remember { Animatable(selected.toFloat()) }
     val target by rememberUpdatedState(selected)
-    val bounce = spring<Float>(dampingRatio = 0.62f, stiffness = 420f)
+    val reduced = LocalReducedMotion.current
+    val bounce = if (reduced) snap() else spring<Float>(dampingRatio = 0.62f, stiffness = 420f)
     // El resaltado sigue a la burbuja (la pestaña más cercana), no al final de la animación.
     val highlighted by remember { derivedStateOf { bubble.value.roundToInt() } }
+    // Arrastre del dedo sobre la propia barra (posición en pestañas, p. ej. 1,4).
+    var barDrag by remember { mutableStateOf<Float?>(null) }
+    val select by rememberUpdatedState(onSelect)
+    val haptics = LocalHapticFeedback.current
     LaunchedEffect(Unit) {
-        snapshotFlow { dragPosition() }.collectLatest { drag ->
+        snapshotFlow { barDrag ?: dragPosition() }.collectLatest { drag ->
             if (drag != null) bubble.snapTo(drag) else bubble.animateTo(target.toFloat(), bounce)
         }
     }
     LaunchedEffect(selected) {
-        if (dragPosition() == null) bubble.animateTo(selected.toFloat(), bounce)
+        if (dragPosition() == null && barDrag == null) bubble.animateTo(selected.toFloat(), bounce)
     }
     GlassSurface(
         modifier.fillMaxWidth().height(70.dp),
         shape = CircleShape,
         strong = true,
+        tint = p.pillVeil(),
         frost = 4.dp,
     ) {
-        BoxWithConstraints(Modifier.fillMaxSize().padding(6.dp)) {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxSize()
+                .padding(6.dp)
+                .pointerInput(items.size) {
+                    val last = items.lastIndex.toFloat()
+                    fun itemPx() = size.width.toFloat() / items.size
+                    detectHorizontalDragGestures(
+                        onDragStart = { o -> barDrag = (o.x / itemPx() - 0.5f).coerceIn(0f, last) },
+                        onDragEnd = {
+                            barDrag?.let { select(it.roundToInt()) }
+                            barDrag = null
+                        },
+                        onDragCancel = { barDrag = null },
+                    ) { change, dx ->
+                        change.consume()
+                        val before = (barDrag ?: 0f).roundToInt()
+                        val now = ((barDrag ?: 0f) + dx / itemPx()).coerceIn(0f, last)
+                        barDrag = now
+                        if (now.roundToInt() != before) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    }
+                },
+        ) {
             val itemWidth = maxWidth / items.size
             Box(
                 Modifier
@@ -330,11 +368,13 @@ fun GlassNavBar(
             Row(Modifier.fillMaxSize()) {
                 items.forEachIndexed { i, item ->
                     val active = i == highlighted
+                    val isSelected = i == selected
                     Column(
                         Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clickable(remember { MutableInteractionSource() }, null) { onSelect(i) },
+                            .semantics { this.selected = isSelected }
+                            .clickable(remember { MutableInteractionSource() }, null, role = Role.Tab) { onSelect(i) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
@@ -351,55 +391,6 @@ fun GlassNavBar(
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-/** Deslizar el pulgar hasta el final para confirmar (descartar alarma). */
-@Composable
-fun SlideToConfirm(text: String, onConfirm: () -> Unit, modifier: Modifier = Modifier) {
-    val p = LocalGlass.current
-    val confirm by rememberUpdatedState(onConfirm)
-    // Posición del pulgar: se actualiza al instante durante el arrastre (sin corrutinas que
-    // puedan llegar tarde) y solo se anima al soltar.
-    var x by remember { mutableFloatStateOf(0f) }
-    GlassSurface(modifier.fillMaxWidth().height(76.dp), shape = CircleShape, strong = true) {
-        BoxWithConstraints(Modifier.fillMaxSize().padding(8.dp)) {
-            val thumb = 60.dp
-            val maxPx = with(LocalDensity.current) { (maxWidth - thumb).toPx() }.coerceAtLeast(1f)
-            Text(
-                text,
-                Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - x / maxPx },
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = p.contentSecondary,
-            )
-            Box(
-                Modifier
-                    .offset { IntOffset(x.roundToInt(), 0) }
-                    .size(thumb)
-                    .clip(CircleShape)
-                    .background(p.accent)
-                    .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
-                    .draggable(
-                        orientation = Orientation.Horizontal,
-                        state = rememberDraggableState { delta -> x = (x + delta).coerceIn(0f, maxPx) },
-                        onDragStopped = {
-                            if (x > maxPx * 0.75f) {
-                                animate(x, maxPx, animationSpec = tween(120)) { v, _ -> x = v }
-                                confirm()
-                                // Por si la pantalla no se cierra (p. ej. ya no sonaba nada).
-                                delay(400)
-                            }
-                            animate(x, 0f, animationSpec = spring(dampingRatio = 0.55f, stiffness = 400f)) { v, _ ->
-                                x = v
-                            }
-                        },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(styled(Icons.AutoMirrored.Rounded.ArrowForward), null, tint = readableOn(p.accent))
             }
         }
     }
@@ -479,8 +470,8 @@ fun BoxScope.ActionSheetHost(spec: SheetSpec?, onDismiss: () -> Unit) {
     AnimatedVisibility(
         spec != null,
         modifier = Modifier.align(Alignment.BottomCenter),
-        enter = slideInVertically(spring(dampingRatio = 0.8f, stiffness = 500f)) { it } + fadeIn(),
-        exit = slideOutVertically { it } + fadeOut(),
+        enter = if (LocalReducedMotion.current) fadeIn() else slideInVertically(spring(dampingRatio = 0.8f, stiffness = 500f)) { it } + fadeIn(),
+        exit = if (LocalReducedMotion.current) fadeOut() else slideOutVertically { it } + fadeOut(),
     ) {
         val s = last ?: return@AnimatedVisibility
         GlassSurface(
@@ -559,8 +550,8 @@ fun BoxScope.PromptHost(spec: PromptSpec?, onDismiss: () -> Unit) {
     AnimatedVisibility(
         spec != null,
         modifier = Modifier.align(Alignment.Center).imePadding().padding(20.dp),
-        enter = fadeIn() + scaleIn(initialScale = 0.9f),
-        exit = fadeOut() + scaleOut(targetScale = 0.9f),
+        enter = fadeIn() + if (LocalReducedMotion.current) EnterTransition.None else scaleIn(initialScale = 0.9f),
+        exit = fadeOut() + if (LocalReducedMotion.current) ExitTransition.None else scaleOut(targetScale = 0.9f),
     ) {
         val s = last ?: return@AnimatedVisibility
         // Cada apertura es un PromptSpec nuevo: el texto empieza vacío.
@@ -603,6 +594,55 @@ fun BoxScope.PromptHost(spec: PromptSpec?, onDismiss: () -> Unit) {
                         prominent = true,
                     )
                 }
+            }
+        }
+    }
+}
+
+/** Deslizar el pulgar hasta el final para confirmar (descartar alarma). */
+@Composable
+fun SlideToConfirm(text: String, onConfirm: () -> Unit, modifier: Modifier = Modifier) {
+    val p = LocalGlass.current
+    val confirm by rememberUpdatedState(onConfirm)
+    // Posición del pulgar: se actualiza al instante durante el arrastre (sin corrutinas que
+    // puedan llegar tarde) y solo se anima al soltar.
+    var x by remember { mutableFloatStateOf(0f) }
+    GlassSurface(modifier.fillMaxWidth().height(76.dp), shape = CircleShape, strong = true) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(8.dp)) {
+            val thumb = 60.dp
+            val maxPx = with(LocalDensity.current) { (maxWidth - thumb).toPx() }.coerceAtLeast(1f)
+            Text(
+                text,
+                Modifier.align(Alignment.Center).graphicsLayer { alpha = 1f - x / maxPx },
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = p.contentSecondary,
+            )
+            Box(
+                Modifier
+                    .offset { IntOffset(x.roundToInt(), 0) }
+                    .size(thumb)
+                    .clip(CircleShape)
+                    .background(p.accent)
+                    .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+                    .draggable(
+                        orientation = Orientation.Horizontal,
+                        state = rememberDraggableState { delta -> x = (x + delta).coerceIn(0f, maxPx) },
+                        onDragStopped = {
+                            if (x > maxPx * 0.75f) {
+                                animate(x, maxPx, animationSpec = tween(120)) { v, _ -> x = v }
+                                confirm()
+                                // Por si la pantalla no se cierra (p. ej. ya no sonaba nada).
+                                delay(400)
+                            }
+                            animate(x, 0f, animationSpec = spring(dampingRatio = 0.55f, stiffness = 400f)) { v, _ ->
+                                x = v
+                            }
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(styled(Icons.AutoMirrored.Rounded.ArrowForward), null, tint = readableOn(p.accent))
             }
         }
     }

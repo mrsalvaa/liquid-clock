@@ -1,11 +1,12 @@
 package dev.glassclock.ui.glass
 
 import android.os.SystemClock
+import android.provider.Settings
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,15 +20,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.delay
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -36,14 +34,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import dev.glassclock.data.AppSettings
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import dev.glassclock.data.AppSettings
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 @Immutable
 data class GlassPalette(
@@ -235,6 +239,15 @@ val SolidLight = LightGlass.copy(
     outline = Color.Black.copy(alpha = 0.06f),
 )
 
+fun GlassPalette.accentFill(): Color = if (solid) accent else accent.copy(alpha = if (dark) 0.6f else 0.92f)
+
+/**
+ * Velo de las píldoras flotantes (la de pestañas y las de selección). Con fondo liso en claro la
+ * paleta lleva 85 % de blanco y tapa la refracción, que en oscuro sí se ve (9 %): ahí, y solo ahí,
+ * llevan menos para que se note lo que pasa por debajo. null = el velo normal de la paleta.
+ */
+fun GlassPalette.pillVeil(): Color? = if (!dark && !solid && blobs.isEmpty()) Color.White.copy(alpha = 0.3f) else null
+
 val LocalGlass = staticCompositionLocalOf { DarkGlass }
 
 /** false en las pestañas ocultas: sirve para pausar lo que se refresca en cada fotograma. */
@@ -251,6 +264,20 @@ fun isDarkTheme(themeMode: Int): Boolean = when (themeMode) {
     1 -> false
     2 -> true
     else -> isSystemInDarkTheme()
+}
+
+val LocalReducedMotion = staticCompositionLocalOf { false }
+
+@Composable
+fun rememberReducedMotion(): Boolean {
+    val resolver = LocalContext.current.contentResolver
+    fun read() = Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    var reduced by remember { mutableStateOf(read()) }
+    LifecycleResumeEffect(resolver) {
+        reduced = read()
+        onPauseOrDispose {}
+    }
+    return reduced
 }
 
 @Composable
@@ -296,6 +323,7 @@ fun GlassTheme(settings: AppSettings, content: @Composable () -> Unit) {
         CompositionLocalProvider(
             LocalGlass provides palette,
             LocalContentColor provides p.content,
+            LocalReducedMotion provides rememberReducedMotion(),
             content = content,
         )
     }

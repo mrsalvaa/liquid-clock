@@ -2,6 +2,12 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## 0.5.1
+
+### Fixes
+- On the plain background in light theme, the tab bar now shows the liquid glass effect, as it does in dark theme.
+- Glass and controls updated to match the rest of the suite: the tab bar can also be dragged with a finger, and animations follow the system setting to remove them.
+
 ## 0.5.0
 
 ### New

@@ -107,7 +107,7 @@ fun AlarmEditScreen(alarmId: Int?, groupId: Int?, contentPadding: PaddingValues,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 WheelPicker(24, draft.hour, { draft = draft.copy(hour = it) })
-                WheelColon(38)
+                WheelColon(fontSize = 38)
                 WheelPicker(60, draft.minute, { draft = draft.copy(minute = it) })
             }
             val preview = draft.copy(enabled = true, skippedOccurrence = null, snoozedUntil = null)
