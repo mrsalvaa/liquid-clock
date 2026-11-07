@@ -71,7 +71,7 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
 
         if (s.uiStyle == 1) {
             // Sólido: color de énfasis propio (no pisa el de Liquid Glass).
-            Label("Color de énfasis")
+            Label("Énfasis")
             AccentPicker(s.solidAccent) { c -> edit { it.copy(solidAccent = c) } }
         } else {
             Label("Fondo")

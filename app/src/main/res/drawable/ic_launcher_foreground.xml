@@ -44,7 +44,7 @@
     <!-- Segundero -->
     <path
         android:strokeWidth="1.2"
-        android:strokeColor="#FFF472B6"
+        android:strokeColor="#FFFF4D6D"
         android:strokeLineCap="round"
         android:pathData="M56.5,49.7L44,71.3" />
     <path
