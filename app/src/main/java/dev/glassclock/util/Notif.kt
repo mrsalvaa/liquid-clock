@@ -21,11 +21,13 @@ object Notif {
 
     /**
      * Notificación con el icono pequeño de la app y el azul del tema. One UI muestra a la izquierda
-     * el icono base de la app (Samsung), que no cambia aunque se elija otro en Ajustes.
+     * el icono base de la app (Samsung), que no cambia aunque se elija otro en Ajustes: el elegido
+     * va como imagen grande.
      */
     fun builder(context: Context, channel: String): NotificationCompat.Builder =
         NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(AppIcons.large(context))
             .setColor(0xFF1A73E8.toInt())
 
     fun createChannels(context: Context) {

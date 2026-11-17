@@ -2,6 +2,11 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## 0.5.3
+
+### Changed
+- Notifications show the app icon you picked in Settings as their picture (the small app icon the system adds is fixed and can't follow the choice).
+
 ## 0.5.2
 
 ### Changed

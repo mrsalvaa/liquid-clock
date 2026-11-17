@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 0.5.3
+
+### Cambios
+- Las notificaciones muestran como imagen el ícono de la app que elegiste en Ajustes (el ícono chico que agrega el sistema es fijo y no puede seguir la elección).
+
 ## 0.5.2
 
 ### Cambios
